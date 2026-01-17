@@ -56,14 +56,14 @@ impl FanProfile {
     /// Returns an error if the profile string can't be converted to ``FanState``
     pub fn get_profile() -> Result<FanState, DaemonError> {
         // Find the correct line where the fan profile is
-        let output = command::run("asusctl", &["profile", "-p"])?;
-        let output_line = output.lines().nth(1).ok_or_else(|| DaemonError::ParseError(output.clone()))?;
+        let output = command::run("asusctl", &["profile", "get"])?;
+        let output_line = output.lines().next().ok_or_else(|| DaemonError::ParseError(output.clone()))?;
 
         // Match the profile string
         Ok(
             match output_line
                 .split_whitespace()
-                .nth(3)
+                .nth(2)
                 .ok_or_else(|| DaemonError::ParseError(output_line.to_string()))?
             {
                 "Performance" => FanState::Performance,
@@ -98,7 +98,7 @@ impl FanProfile {
             }
         };
 
-        command::run("asusctl", &["profile", "-P", new_profile])?;
+        command::run("asusctl", &["profile", "set", new_profile])?;
 
         Ok(())
     }
