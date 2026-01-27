@@ -140,18 +140,37 @@ impl Battery {
     }
 
     /// # Errors
+    /// Errors are turned into `String` and set as value of `state` then returned as an `Ok()`
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     pub fn get_tuples() -> Result<Vec<(String, String)>, DaemonError> {
-        let (state, percent, time) = Self::get()?;
-        let icon = Self::get_icon(&state, percent);
+        let str_values = match Self::get() {
+            Ok((state, percent, time)) => {
+                let icon = Self::get_icon(&state, percent);
+
+                vec![
+                    BAT_STATE_STRINGS[state as usize].to_string(),
+                    percent.to_string(),
+                    time,
+                    format!("{icon}{ICON_EXT}"),
+                ]
+            }
+            Err(e) => {
+                let icon = Self::get_icon(&BatteryState::NotCharging, 0);
+
+                vec![e.to_string(), 0.to_string(), String::new(), format!("{icon}{ICON_EXT}")]
+            }
+        };
 
         Ok(vec![
-            ("state".to_string(), BAT_STATE_STRINGS[state as usize].to_string()),
-            ("percent".to_string(), percent.to_string()),
-            ("time".to_string(), time),
-            ("icon".to_string(), format!("{icon}{ICON_EXT}")),
-        ])
+            "state".to_string(),
+            "percent".to_string(),
+            "time".to_string(),
+            "icon".to_string(),
+        ]
+        .into_iter()
+        .zip(str_values)
+        .collect::<Vec<_>>())
     }
 
     /// # Errors
@@ -220,7 +239,7 @@ impl Battery {
                             "-t",
                             NOTIFICATION_TIMEOUT.to_string().as_str(),
                             "-i",
-                            icon.to_string().as_str(),
+                            icon.clone().as_str(),
                             "-r",
                             NOTIFICATION_ID.to_string().as_str(),
                             "-h",

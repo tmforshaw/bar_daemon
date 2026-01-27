@@ -82,16 +82,27 @@ impl Bluetooth {
     }
 
     /// # Errors
+    /// Errors are turned into `String` and set as value of `state` then returned as an `Ok()`
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     pub fn get_tuples() -> Result<Vec<(String, String)>, DaemonError> {
-        let state = Self::get_state()?;
-        let icon = Self::get_icon(state);
+        let str_values = match Self::get_state() {
+            Ok(state) => {
+                let icon = Self::get_icon(state);
 
-        Ok(vec![
-            ("state".to_string(), state.to_string()),
-            ("icon".to_string(), format!("{icon}{ICON_EXT}")),
-        ])
+                vec![state.to_string(), format!("{icon}{ICON_EXT}")]
+            }
+            Err(e) => {
+                let icon = Self::get_icon(false);
+
+                vec![e.to_string(), format!("{icon}{ICON_EXT}")]
+            }
+        };
+
+        Ok(vec!["state".to_string(), "icon".to_string()]
+            .into_iter()
+            .zip(str_values)
+            .collect::<Vec<_>>())
     }
 
     /// # Errors

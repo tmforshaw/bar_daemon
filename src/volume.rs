@@ -190,16 +190,28 @@ impl Volume {
     }
 
     /// # Errors
-    /// Returns an error if the requested value could not be parsed
+    /// Errors are turned into `String` and set as value of `percent` then returned as an `Ok()`
+    /// Returns an error if values in the output of the command cannot be parsed
     pub fn get_tuples() -> Result<Vec<(String, String)>, DaemonError> {
-        let (percent, mute_state) = Self::get()?;
-        let icon = Self::get_icon(percent, mute_state);
+        let percent_mute = Self::get();
 
-        Ok(vec![
-            ("percent".to_string(), percent.to_string()),
-            ("mute_state".to_string(), mute_state.to_string()),
-            ("icon".to_string(), format!("{icon}{ICON_EXT}")),
-        ])
+        let str_values = match percent_mute {
+            Ok((percent, mute_state)) => {
+                let icon = Self::get_icon(percent, mute_state);
+
+                vec![percent.to_string(), mute_state.to_string(), format!("{icon}{ICON_EXT}")]
+            }
+            Err(e) => {
+                let icon = Self::get_icon(0, false);
+
+                vec![e.to_string(), false.to_string(), format!("{icon}{ICON_EXT}")]
+            }
+        };
+
+        Ok(vec!["percent".to_string(), "mute_state".to_string(), "icon".to_string()]
+            .into_iter()
+            .zip(str_values)
+            .collect::<Vec<_>>())
     }
 
     /// # Errors
@@ -273,7 +285,7 @@ impl Volume {
             },
             VolumeSetCommands::Mute { value } => DaemonMessage::Set {
                 item: DaemonItem::Volume(VolumeItem::Mute),
-                value: value.map_or("toggle".to_string(), |value| value.to_string()),
+                value: value.map_or_else(|| "toggle".to_string(), |value| value.to_string()),
             },
         }
     }

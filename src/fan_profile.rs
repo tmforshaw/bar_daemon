@@ -109,16 +109,25 @@ impl FanProfile {
     }
 
     /// # Errors
+    /// Errors are turned into `String` and set as value of `profile` then returned as an `Ok()`
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     pub fn get_tuples() -> Result<Vec<(String, String)>, DaemonError> {
-        let profile = Self::get_profile()?;
         let icon = Self::get_icon();
 
-        Ok(vec![
-            ("profile".to_string(), FAN_STATE_STRINGS[profile as usize].to_string()),
-            ("icon".to_string(), format!("{icon}{ICON_EXT}")),
-        ])
+        let str_values = match Self::get_profile() {
+            Ok(profile) => {
+                vec![FAN_STATE_STRINGS[profile as usize].to_string(), format!("{icon}{ICON_EXT}")]
+            }
+            Err(e) => {
+                vec![e.to_string(), format!("{icon}{ICON_EXT}")]
+            }
+        };
+
+        Ok(vec!["profile".to_string(), "icon".to_string()]
+            .into_iter()
+            .zip(str_values)
+            .collect::<Vec<_>>())
     }
 
     /// # Errors

@@ -182,15 +182,26 @@ impl Brightness {
     }
 
     /// # Errors
-    /// Returns an error if the requested value could not be parsed
+    /// Errors are turned into `String` and set as value of `monitor_percent` then returned as an `Ok()`
+    /// Returns an error if values in the output of the command cannot be parsed
     pub fn get_tuples() -> Result<Vec<(String, String)>, DaemonError> {
-        let monitor_percent = Self::get_monitor()?;
-        let icon = Self::get_icon(MONITOR_ID, monitor_percent);
+        let str_values = match Self::get_monitor() {
+            Ok(monitor_percent) => {
+                let icon = Self::get_icon(MONITOR_ID, monitor_percent);
 
-        Ok(vec![
-            ("monitor_percent".to_string(), (monitor_percent as u32).to_string()),
-            ("icon".to_string(), format!("{icon}{ICON_EXT}")),
-        ])
+                vec![(monitor_percent as u32).to_string(), format!("{icon}{ICON_EXT}")]
+            }
+            Err(e) => {
+                let icon = Self::get_icon(MONITOR_ID, 0.);
+
+                vec![e.to_string(), format!("{icon}{ICON_EXT}")]
+            }
+        };
+
+        Ok(vec!["monitor_percent".to_string(), "icon".to_string()]
+            .into_iter()
+            .zip(str_values)
+            .collect::<Vec<_>>())
     }
 
     #[must_use]

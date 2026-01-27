@@ -120,17 +120,34 @@ impl Ram {
     }
 
     /// # Errors
+    /// Errors are turned into `String` and set as value of `total` then returned as an `Ok()`
     /// Returns an error if the requested value could not be parsed
     pub fn get_tuples() -> Result<Vec<(String, String)>, DaemonError> {
-        let (total, used, percent) = Self::get()?;
         let icon = Self::get_icon();
 
+        let str_values = match Self::get() {
+            Ok((total, used, percent)) => {
+                vec![
+                    total.to_string(),
+                    used.to_string(),
+                    percent.to_string(),
+                    format!("{icon}{ICON_EXT}"),
+                ]
+            }
+            Err(e) => {
+                vec![e.to_string(), 0.to_string(), 0.to_string(), format!("{icon}{ICON_EXT}")]
+            }
+        };
+
         Ok(vec![
-            ("total".to_string(), total.to_string()),
-            ("used".to_string(), used.to_string()),
-            ("percent".to_string(), percent.to_string()),
-            ("icon".to_string(), format!("{icon}{ICON_EXT}")),
-        ])
+            "total".to_string(),
+            "used".to_string(),
+            "percent".to_string(),
+            "icon".to_string(),
+        ]
+        .into_iter()
+        .zip(str_values)
+        .collect::<Vec<_>>())
     }
 
     /// # Errors
