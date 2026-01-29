@@ -17,3 +17,23 @@ pub fn tuples_to_json(tuples: Vec<(String, Vec<(String, String)>)>) -> Result<St
 
     Ok(serde_json::to_string(&json_map)?)
 }
+
+#[cfg(test)]
+#[test]
+fn tuple_to_json_test() {
+    let tuples = vec![(
+        String::from("TestName"),
+        vec![(String::from("Param1"), String::from("Param2"))],
+    )];
+
+    let json = tuples_to_json(tuples);
+
+    assert!(
+        if let Ok(json_string) = json.as_ref() {
+            json_string == &"{\"TestName\":{\"Param1\":\"Param2\"}}".to_string()
+        } else {
+            false
+        },
+        "{json:?}\n\n{{\"TestName\":{{\"Param1\":\"Param2\"}}}}",
+    );
+}
