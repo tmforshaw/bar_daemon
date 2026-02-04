@@ -35,20 +35,36 @@ impl Default for Snapshot {
     }
 }
 
-static CURRENT_STATE: LazyLock<RwLock<Snapshot>> = LazyLock::new(|| RwLock::new(Snapshot::default()));
+static CURRENT_SNAPSHOT: LazyLock<RwLock<Snapshot>> = LazyLock::new(|| RwLock::new(Snapshot::default()));
 
 /// # Errors
-/// Returns an error if the current state cannot be read due to `RwLock` Poisoning
-pub fn current_state() -> Result<Snapshot, DaemonError> {
-    CURRENT_STATE
+/// Returns an error if the current snapshot cannot be read due to `RwLock` Poisoning
+pub fn current_snapshot() -> Result<Snapshot, DaemonError> {
+    CURRENT_SNAPSHOT
         .read()
         .map_or(Err(DaemonError::RwLockError), |snap| Ok(snap.clone()))
 }
 
 /// # Errors
-/// Returns an error if the current state can't be written to due to `RwLock` Poisoning
-pub fn set_state_volume(volume: Volume) -> Result<(), DaemonError> {
-    CURRENT_STATE.write().map_err(|_| DaemonError::RwLockError)?.volume = volume;
+/// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
+pub fn set_snapshot_volume(volume: Volume) -> Result<(), DaemonError> {
+    CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.volume = volume;
+
+    Ok(())
+}
+
+/// # Errors
+/// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
+pub fn set_snapshot_battery(battery: Battery) -> Result<(), DaemonError> {
+    CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.battery = battery;
+
+    Ok(())
+}
+
+/// # Errors
+/// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
+pub fn set_snapshot_bluetooth(bluetooth: Bluetooth) -> Result<(), DaemonError> {
+    CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.bluetooth = bluetooth;
 
     Ok(())
 }

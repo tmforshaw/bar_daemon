@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 use crate::{
     battery::{self, BatteryGetCommands},
-    bluetooth::{Bluetooth, BluetoothGetCommands, BluetoothSetCommands, BluetoothUpdateCommands},
+    bluetooth::{self, BluetoothGetCommands, BluetoothSetCommands, BluetoothUpdateCommands},
     brightness::{Brightness, BrightnessGetCommands, BrightnessSetCommands, BrightnessUpdateCommands},
     daemon::{DaemonItem, DaemonMessage, do_daemon, send_daemon_messaage},
     error::DaemonError,
@@ -161,7 +161,7 @@ pub async fn match_cli() -> Result<(), DaemonError> {
                 match commands {
                     GetCommands::Volume { commands } => volume::match_get_commands(&commands),
                     GetCommands::Brightness { commands } => Brightness::match_get_commands(&commands),
-                    GetCommands::Bluetooth { commands } => Bluetooth::match_get_commands(&commands),
+                    GetCommands::Bluetooth { commands } => bluetooth::match_get_commands(&commands),
                     GetCommands::Battery { commands } => battery::match_get_commands(&commands),
                     GetCommands::Ram { commands } => Ram::match_get_commands(&commands),
                     GetCommands::FanProfile { commands } => FanProfile::match_get_commands(&commands),
@@ -174,13 +174,13 @@ pub async fn match_cli() -> Result<(), DaemonError> {
         CliCommands::Set { commands } => match commands {
             SetCommands::Volume { commands } => volume::match_set_commands(commands),
             SetCommands::Brightness { commands } => Brightness::match_set_commands(commands),
-            SetCommands::Bluetooth { commands } => Bluetooth::match_set_commands(&commands),
+            SetCommands::Bluetooth { commands } => bluetooth::match_set_commands(&commands),
             SetCommands::FanProfile { commands } => FanProfile::match_set_commands(commands),
         },
         CliCommands::Update { commands } => match commands {
             UpdateCommands::Volume { commands } => volume::match_update_commands(&commands),
             UpdateCommands::Brightness { commands } => Brightness::match_update_commands(&commands),
-            UpdateCommands::Bluetooth { commands } => Bluetooth::match_update_commands(&commands),
+            UpdateCommands::Bluetooth { commands } => bluetooth::match_update_commands(&commands),
             UpdateCommands::FanProfile { commands } => FanProfile::match_update_commands(&commands),
         },
         CliCommands::Listen => {

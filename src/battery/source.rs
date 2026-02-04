@@ -1,7 +1,11 @@
 use std::str::Split;
 
 use super::value::{Battery, BatteryState};
-use crate::{command, error::DaemonError};
+use crate::{
+    command,
+    error::DaemonError,
+    snapshot::{current_snapshot, set_snapshot_battery},
+};
 
 pub trait BatterySource {
     // Read from commands (Get latest values)
@@ -26,6 +30,7 @@ pub fn latest() -> Result<Battery, DaemonError> {
 
 pub struct AcpiBattery;
 
+// TODO update snapshot when getting
 impl BatterySource for AcpiBattery {
     fn read(&self) -> Result<Battery, DaemonError> {
         // Get ACPI output and split it into sections
@@ -33,11 +38,16 @@ impl BatterySource for AcpiBattery {
         let output_split = get_acpi_split(&output);
 
         // Parse the state, percentage, and time remaining
-        Ok(Battery {
+        let battery = Battery {
             state: get_state_from_acpi_split(output_split.clone())?,
             percent: get_percent_from_acpi_split(output_split.clone())?,
             time: get_time_from_acpi_split(output_split)?,
-        })
+        };
+
+        // Update current snapshot
+        set_snapshot_battery(battery.clone())?;
+
+        Ok(battery)
     }
 
     fn read_state(&self) -> Result<BatteryState, DaemonError> {
@@ -45,7 +55,13 @@ impl BatterySource for AcpiBattery {
         let output = get_acpi_output()?;
         let output_split = get_acpi_split(&output);
 
-        get_state_from_acpi_split(output_split)
+        let state = get_state_from_acpi_split(output_split)?;
+
+        // Update current snapshot TODO Replace with soft error
+        let battery = current_snapshot()?.battery;
+        set_snapshot_battery(Battery { state, ..battery })?;
+
+        Ok(state)
     }
 
     fn read_percent(&self) -> Result<u32, DaemonError> {
@@ -53,7 +69,13 @@ impl BatterySource for AcpiBattery {
         let output = get_acpi_output()?;
         let output_split = get_acpi_split(&output);
 
-        get_percent_from_acpi_split(output_split)
+        let percent = get_percent_from_acpi_split(output_split)?;
+
+        // Update current snapshot TODO Replace with soft error
+        let battery = current_snapshot()?.battery;
+        set_snapshot_battery(Battery { percent, ..battery })?;
+
+        Ok(percent)
     }
 
     fn read_time(&self) -> Result<String, DaemonError> {
@@ -61,7 +83,16 @@ impl BatterySource for AcpiBattery {
         let output = get_acpi_output()?;
         let output_split = get_acpi_split(&output);
 
-        get_time_from_acpi_split(output_split)
+        let time = get_time_from_acpi_split(output_split)?;
+
+        // Update current snapshot TODO Replace with soft error
+        let battery = current_snapshot()?.battery;
+        set_snapshot_battery(Battery {
+            time: time.clone(),
+            ..battery
+        })?;
+
+        Ok(time)
     }
 }
 

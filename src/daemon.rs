@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     battery::{self, BatteryItem},
-    bluetooth::{Bluetooth, BluetoothItem},
+    bluetooth::{self, BluetoothItem},
     brightness::{Brightness, BrightnessItem, KEYBOARD_ID, MONITOR_ID},
     error::DaemonError,
     fan_profile::{FanProfile, FanProfileItem},
@@ -193,7 +193,7 @@ pub async fn handle_socket(
                                 ClientMessage::UpdateBrightness
                             },
                             DaemonItem::Bluetooth(_) => {
-                                Bluetooth::notify()?;
+                                bluetooth::notify()?;
 
                                 ClientMessage::UpdateBluetooth
                             },
@@ -262,7 +262,7 @@ pub fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply,
     let message = match item.clone() {
         DaemonItem::Volume(volume_item) => volume::evaluate_item(item, &volume_item, Some(value))?,
         DaemonItem::Brightness(brightness_item) => Brightness::parse_item(item, &brightness_item, Some(value))?,
-        DaemonItem::Bluetooth(bluetooth_item) => Bluetooth::parse_item(item, &bluetooth_item, Some(value))?,
+        DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item, &bluetooth_item, Some(value))?,
         DaemonItem::FanProfile(fan_profile_item) => FanProfile::parse_item(item, &fan_profile_item, Some(value))?,
         _ => DaemonReply::Value { item, value },
     };
@@ -276,7 +276,7 @@ pub async fn match_get_command(item: DaemonItem) -> Result<DaemonReply, DaemonEr
     let message = match item.clone() {
         DaemonItem::Volume(volume_item) => volume::evaluate_item(item.clone(), &volume_item, None)?,
         DaemonItem::Brightness(brightness_item) => Brightness::parse_item(item.clone(), &brightness_item, None)?,
-        DaemonItem::Bluetooth(bluetooth_item) => Bluetooth::parse_item(item.clone(), &bluetooth_item, None)?,
+        DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item.clone(), &bluetooth_item, None)?,
         DaemonItem::Battery(battery_item) => battery::evaluate_item(item.clone(), &battery_item)?,
         DaemonItem::Ram(ram_item) => Ram::parse_item(item.clone(), &ram_item)?,
         DaemonItem::FanProfile(fan_profile_item) => FanProfile::parse_item(item.clone(), &fan_profile_item, None)?,

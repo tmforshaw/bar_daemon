@@ -4,7 +4,7 @@ use crate::{
     command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    snapshot::current_state,
+    snapshot::current_snapshot,
 };
 
 use super::{VolumeSource, default_source, latest};
@@ -109,11 +109,11 @@ impl Volume {
 }
 
 /// # Errors
-/// Returns an error if `CURRENT_STATE` could not be read
+/// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
 pub fn notify() -> Result<(), DaemonError> {
     // Get the current volume from the state
-    let volume = current_state()?.volume;
+    let volume = current_snapshot()?.volume;
 
     let percent = volume.percent;
     let icon = volume.get_icon();
@@ -143,7 +143,7 @@ pub fn notify() -> Result<(), DaemonError> {
 pub fn evaluate_item(item: DaemonItem, volume_item: &VolumeItem, value: Option<String>) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
         // Get the current volume before the change
-        let prev_volume_obj = current_state()?.volume;
+        let prev_volume_obj = current_snapshot()?.volume;
 
         // Set value
         match volume_item {
@@ -161,23 +161,23 @@ pub fn evaluate_item(item: DaemonItem, volume_item: &VolumeItem, value: Option<S
 
         DaemonReply::Value { item, value }
     } else {
-        // Get value (use current_state since this won't change without bar_daemon changing it)
+        // Get value (use current_snapshot since this won't change without bar_daemon changing it)
         match volume_item {
             VolumeItem::Percent => DaemonReply::Value {
                 item,
-                value: current_state()?.volume.percent.to_string(),
+                value: current_snapshot()?.volume.percent.to_string(),
             },
             VolumeItem::Mute => DaemonReply::Value {
                 item,
-                value: current_state()?.volume.mute.to_string(),
+                value: current_snapshot()?.volume.mute.to_string(),
             },
             VolumeItem::Icon => DaemonReply::Value {
                 item,
-                value: current_state()?.volume.get_icon(),
+                value: current_snapshot()?.volume.get_icon(),
             },
             VolumeItem::All => DaemonReply::Tuples {
                 item,
-                tuples: current_state()?.volume.to_tuples(),
+                tuples: current_snapshot()?.volume.to_tuples(),
             },
         }
     })

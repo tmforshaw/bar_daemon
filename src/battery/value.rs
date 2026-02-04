@@ -9,7 +9,7 @@ use crate::{
     command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    snapshot::current_state,
+    snapshot::current_snapshot,
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
@@ -103,9 +103,10 @@ impl Battery {
 }
 
 /// # Errors
-/// Returns an error if the requested value could not be parsed
+/// Returns an error if `CURRENT_SNAPSHOT` could not be read
+/// Returns an error if notification command could not be run
 pub fn notify(prev_percent: u32) -> Result<(), DaemonError> {
-    let battery = current_state()?.battery;
+    let battery = current_snapshot()?.battery;
 
     let current_percent = battery.percent;
 

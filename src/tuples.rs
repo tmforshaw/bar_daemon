@@ -1,11 +1,10 @@
 use crate::{
     battery::{self},
-    bluetooth::Bluetooth,
     brightness::Brightness,
     error::DaemonError,
     fan_profile::FanProfile,
     ram::Ram,
-    snapshot::current_state,
+    snapshot::current_snapshot,
 };
 
 pub const TUPLE_NAMES: &[&str] = &["volume", "brightness", "bluetooth", "battery", "ram", "fan_profile"];
@@ -41,11 +40,11 @@ impl TryFrom<usize> for TupleName {
 /// # Errors
 /// Returns an error if the specified tuples can't be gotten
 pub fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, String)>, DaemonError> {
-    // TODO use latest() for polled values and current_state() for values which don't change without user intervention
+    // TODO use latest() for polled values and current_snapshot() for values which don't change without user intervention
     match tuple_name {
-        TupleName::Volume => Ok(current_state()?.volume.to_tuples()),
+        TupleName::Volume => Ok(current_snapshot()?.volume.to_tuples()),
         TupleName::Brightness => Brightness::get_tuples(),
-        TupleName::Bluetooth => Bluetooth::get_tuples(),
+        TupleName::Bluetooth => Ok(current_snapshot()?.bluetooth.to_tuples()),
         TupleName::Battery => Ok(battery::latest()?.to_tuples()),
         TupleName::Ram => Ram::get_tuples(),
         TupleName::FanProfile => FanProfile::get_tuples(),

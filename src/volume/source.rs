@@ -5,9 +5,11 @@ use crate::{
     command,
     error::DaemonError,
     log_linear::{linear_to_logarithmic, logarithmic_to_linear},
-    snapshot::{current_state, set_state_volume},
+    snapshot::{current_snapshot, set_snapshot_volume},
 };
 
+// TODO
+#[allow(dead_code)]
 pub trait VolumeSource {
     // Read from commands (Get latest values)
     fn read(&self) -> Result<Volume, DaemonError>;
@@ -45,21 +47,38 @@ impl VolumeSource for WpctlVolume {
 
         let mute = get_mute_from_wpctl_split(output_split);
 
-        Ok(Volume { percent, mute })
+        let volume = Volume { percent, mute };
+
+        // Update current snapshot
+        set_snapshot_volume(volume.clone())?;
+
+        Ok(volume)
     }
 
     fn read_percent(&self) -> Result<u32, DaemonError> {
         let output = get_wpctl_output()?;
         let output_split = get_wpctl_split(&output);
 
-        get_linear_percent_from_wpctl_split(output_split.clone())
+        let percent = get_linear_percent_from_wpctl_split(output_split.clone())?;
+
+        // Update current snapshot TODO Replace with soft error
+        let volume = current_snapshot()?.volume;
+        set_snapshot_volume(Volume { percent, ..volume })?;
+
+        Ok(percent)
     }
 
     fn read_mute(&self) -> Result<bool, DaemonError> {
         let output = get_wpctl_output()?;
         let output_split = get_wpctl_split(&output);
 
-        Ok(get_mute_from_wpctl_split(output_split.clone()))
+        let mute = get_mute_from_wpctl_split(output_split.clone());
+
+        // Update current snapshot TODO Replace with soft error
+        let volume = current_snapshot()?.volume;
+        set_snapshot_volume(Volume { mute, ..volume })?;
+
+        Ok(mute)
     }
 
     // Set source values
@@ -68,8 +87,8 @@ impl VolumeSource for WpctlVolume {
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     fn set_percent(&self, percent_str: &str) -> Result<(), DaemonError> {
-        // Get the current state values within the snapshot
-        let state = current_state()?;
+        // Get the current snapshot values
+        let state = current_snapshot()?;
 
         // If the percentage is a change, figure out the true percentage
         let linear_percent = if percent_str.starts_with('+') || percent_str.starts_with('-') {
@@ -95,7 +114,7 @@ impl VolumeSource for WpctlVolume {
         };
 
         // Update the volume in the snapshot
-        set_state_volume(Volume {
+        set_snapshot_volume(Volume {
             percent: linear_percent,
             ..state.volume
         })?;
@@ -113,16 +132,29 @@ impl VolumeSource for WpctlVolume {
     }
 
     fn set_mute(&self, mute_str: &str) -> Result<(), DaemonError> {
+        let current_volume = current_snapshot()?.volume;
+
+        let new_mute;
+
         let mute = if mute_str == "toggle" {
+            new_mute = !current_snapshot()?.volume.mute;
+
             mute_str.to_string()
         } else {
-            u8::from(mute_str.parse::<bool>()?).to_string()
+            let mute = mute_str.parse::<bool>()?;
+            new_mute = mute;
+
+            u8::from(mute).to_string()
         };
 
         // Set the mute state
         let _ = command::run("wpctl", &["set-mute", "@DEFAULT_SINK@", mute.as_str()])?;
 
-        // TODO update Snapshot
+        // Update the volume in the snapshot
+        set_snapshot_volume(Volume {
+            mute: new_mute,
+            ..current_volume
+        })?;
 
         Ok(())
     }
