@@ -5,10 +5,9 @@ use crate::{
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
     snapshot::current_state,
-    volume::{default_source, latest},
 };
 
-use super::VolumeSource;
+use super::{VolumeSource, default_source, latest};
 
 use clap::{ArgAction, Subcommand};
 use serde::{Deserialize, Serialize};
