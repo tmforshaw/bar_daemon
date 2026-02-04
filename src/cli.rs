@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::{
-    battery::{Battery, BatteryGetCommands},
+    battery::{self, BatteryGetCommands},
     bluetooth::{Bluetooth, BluetoothGetCommands, BluetoothSetCommands, BluetoothUpdateCommands},
     brightness::{Brightness, BrightnessGetCommands, BrightnessSetCommands, BrightnessUpdateCommands},
     daemon::{DaemonItem, DaemonMessage, do_daemon, send_daemon_messaage},
@@ -162,7 +162,7 @@ pub async fn match_cli() -> Result<(), DaemonError> {
                     GetCommands::Volume { commands } => volume::match_get_commands(&commands),
                     GetCommands::Brightness { commands } => Brightness::match_get_commands(&commands),
                     GetCommands::Bluetooth { commands } => Bluetooth::match_get_commands(&commands),
-                    GetCommands::Battery { commands } => Battery::match_get_commands(&commands),
+                    GetCommands::Battery { commands } => battery::match_get_commands(&commands),
                     GetCommands::Ram { commands } => Ram::match_get_commands(&commands),
                     GetCommands::FanProfile { commands } => FanProfile::match_get_commands(&commands),
                     GetCommands::All => DaemonMessage::Get { item: DaemonItem::All },

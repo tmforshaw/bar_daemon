@@ -9,7 +9,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    battery::{Battery, BatteryItem},
+    battery::{self, BatteryItem},
     bluetooth::{Bluetooth, BluetoothItem},
     brightness::{Brightness, BrightnessItem, KEYBOARD_ID, MONITOR_ID},
     error::DaemonError,
@@ -198,7 +198,7 @@ pub async fn handle_socket(
                                 ClientMessage::UpdateBluetooth
                             },
                             DaemonItem::Battery(_) => {
-                                Battery::notify(u32::MAX)?;
+                                battery::notify(u32::MAX)?;
 
                                 ClientMessage::UpdateBattery
                             },
@@ -277,7 +277,7 @@ pub async fn match_get_command(item: DaemonItem) -> Result<DaemonReply, DaemonEr
         DaemonItem::Volume(volume_item) => volume::evaluate_item(item.clone(), &volume_item, None)?,
         DaemonItem::Brightness(brightness_item) => Brightness::parse_item(item.clone(), &brightness_item, None)?,
         DaemonItem::Bluetooth(bluetooth_item) => Bluetooth::parse_item(item.clone(), &bluetooth_item, None)?,
-        DaemonItem::Battery(battery_item) => Battery::parse_item(item.clone(), &battery_item)?,
+        DaemonItem::Battery(battery_item) => battery::evaluate_item(item.clone(), &battery_item)?,
         DaemonItem::Ram(ram_item) => Ram::parse_item(item.clone(), &ram_item)?,
         DaemonItem::FanProfile(fan_profile_item) => FanProfile::parse_item(item.clone(), &fan_profile_item, None)?,
         DaemonItem::All => DaemonReply::AllTuples {

@@ -10,6 +10,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::implicit_hasher)]
 
+// TODO Readd the soft errors back in so that errors can easily be found
+
 use crate::{cli::match_cli, error::DaemonError};
 
 pub mod battery;

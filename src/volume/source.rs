@@ -19,20 +19,31 @@ pub trait VolumeSource {
     fn set_mute(&self, mute_str: &str) -> Result<(), DaemonError>;
 }
 
-// -------------- Pipewire Source --------------
+// -------------- Default Source ---------------
 
-pub struct PipewireVolume;
+#[must_use]
+pub fn default_source() -> impl VolumeSource {
+    WpctlVolume
+}
 
-impl VolumeSource for PipewireVolume {
+pub fn latest() -> Result<Volume, DaemonError> {
+    default_source().read()
+}
+
+// ---------------- Wpctl Source ---------------
+
+pub struct WpctlVolume;
+
+impl VolumeSource for WpctlVolume {
     // Read from commands
 
     fn read(&self) -> Result<Volume, DaemonError> {
         let output = get_wpctl_output()?;
         let output_split = get_wpctl_split(&output);
 
-        let percent = get_linear_percent_from_split(output_split.clone())?;
+        let percent = get_linear_percent_from_wpctl_split(output_split.clone())?;
 
-        let mute = get_mute_from_split(output_split);
+        let mute = get_mute_from_wpctl_split(output_split);
 
         Ok(Volume { percent, mute })
     }
@@ -41,14 +52,14 @@ impl VolumeSource for PipewireVolume {
         let output = get_wpctl_output()?;
         let output_split = get_wpctl_split(&output);
 
-        get_linear_percent_from_split(output_split.clone())
+        get_linear_percent_from_wpctl_split(output_split.clone())
     }
 
     fn read_mute(&self) -> Result<bool, DaemonError> {
         let output = get_wpctl_output()?;
         let output_split = get_wpctl_split(&output);
 
-        Ok(get_mute_from_split(output_split.clone()))
+        Ok(get_mute_from_wpctl_split(output_split.clone()))
     }
 
     // Set source values
@@ -127,29 +138,16 @@ fn get_wpctl_split(output: &str) -> std::str::SplitWhitespace<'_> {
     output.trim_start_matches("Volume: ").split_whitespace()
 }
 
-fn get_mute_from_split(mut split: SplitWhitespace) -> bool {
+fn get_mute_from_wpctl_split(mut split: SplitWhitespace) -> bool {
     // Get the mute state from the second part of the split
     split.nth(1).is_some()
 }
 
-// ------------- Helper Functions -------------
-
-fn get_linear_percent_from_split(mut split: SplitWhitespace) -> Result<u32, DaemonError> {
+fn get_linear_percent_from_wpctl_split(mut split: SplitWhitespace) -> Result<u32, DaemonError> {
     // Take the first part of the split (The numerical part) then convert to linear percentage
     if let Some(volume_str) = split.next() {
         Ok(logarithmic_to_linear(volume_str.parse::<f64>()? * 100.) as u32)
     } else {
         Err(DaemonError::ParseError(split.collect()))
     }
-}
-
-// Default Source
-
-#[must_use]
-pub fn default_source() -> impl VolumeSource {
-    PipewireVolume
-}
-
-pub fn latest() -> Result<Volume, DaemonError> {
-    default_source().read()
 }
