@@ -19,7 +19,6 @@ pub struct Snapshot {
     pub timestamp: Instant,
 }
 
-// TODO
 #[allow(clippy::default_constructed_unit_structs)]
 impl Default for Snapshot {
     fn default() -> Self {

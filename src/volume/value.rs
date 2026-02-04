@@ -53,12 +53,6 @@ pub enum VolumeItem {
     All,
 }
 
-// static VOLUME_PERCENT: LazyLock<Mutex<u32>> = LazyLock::new(|| {
-//     let percent = Volume::get_percent_true().unwrap_or_else(|e| panic!("Error setting inital VOLUME_PERCENT:\n\t{e}"));
-
-//     Mutex::new(percent)
-// });
-
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Volume {
     pub percent: u32,
