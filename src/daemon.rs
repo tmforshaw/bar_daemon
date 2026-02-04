@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
-    sync::{mpsc, Mutex, Notify},
+    sync::{Mutex, Notify, mpsc},
 };
 use uuid::Uuid;
 
@@ -14,11 +14,11 @@ use crate::{
     brightness::{Brightness, BrightnessItem, KEYBOARD_ID, MONITOR_ID},
     error::DaemonError,
     fan_profile::{FanProfile, FanProfileItem},
-    listener::{handle_clients, poll_values, Client, ClientMessage, SharedClients},
+    listener::{Client, ClientMessage, SharedClients, handle_clients, poll_values},
     ram::{Ram, RamItem},
     shutdown::shutdown_signal,
     tuples::get_all_tuples,
-    volume::{Volume, VolumeItem},
+    volume::{self, VolumeItem},
 };
 
 pub const SOCKET_PATH: &str = "/tmp/bar_daemon.sock";
@@ -181,7 +181,7 @@ pub async fn handle_socket(
                         // Broadcast which value has been updated
                         clients_tx.send(match item {
                             DaemonItem::Volume(_) => {
-                                Volume::notify()?;
+                                volume::notify()?;
 
                                 ClientMessage::UpdateVolume
                             },
@@ -260,7 +260,7 @@ pub async fn send_daemon_messaage(message: DaemonMessage) -> Result<DaemonReply,
 /// Returns an error if the requested value could not be parsed
 pub fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply, DaemonError> {
     let message = match item.clone() {
-        DaemonItem::Volume(volume_item) => Volume::parse_item(item, &volume_item, Some(value))?,
+        DaemonItem::Volume(volume_item) => volume::evaluate_item(item, &volume_item, Some(value))?,
         DaemonItem::Brightness(brightness_item) => Brightness::parse_item(item, &brightness_item, Some(value))?,
         DaemonItem::Bluetooth(bluetooth_item) => Bluetooth::parse_item(item, &bluetooth_item, Some(value))?,
         DaemonItem::FanProfile(fan_profile_item) => FanProfile::parse_item(item, &fan_profile_item, Some(value))?,
@@ -274,7 +274,7 @@ pub fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply,
 /// Returns an error if the requested value could not be parsed
 pub async fn match_get_command(item: DaemonItem) -> Result<DaemonReply, DaemonError> {
     let message = match item.clone() {
-        DaemonItem::Volume(volume_item) => Volume::parse_item(item.clone(), &volume_item, None)?,
+        DaemonItem::Volume(volume_item) => volume::evaluate_item(item.clone(), &volume_item, None)?,
         DaemonItem::Brightness(brightness_item) => Brightness::parse_item(item.clone(), &brightness_item, None)?,
         DaemonItem::Bluetooth(bluetooth_item) => Bluetooth::parse_item(item.clone(), &bluetooth_item, None)?,
         DaemonItem::Battery(battery_item) => Battery::parse_item(item.clone(), &battery_item)?,

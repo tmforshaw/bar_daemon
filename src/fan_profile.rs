@@ -2,10 +2,9 @@ use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    command,
+    ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT, command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT,
 };
 
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
@@ -46,6 +45,7 @@ pub enum FanProfileItem {
     Icon,
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct FanProfile;
 
 impl FanProfile {

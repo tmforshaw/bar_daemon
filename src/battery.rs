@@ -2,10 +2,9 @@ use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    command,
+    ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT, command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT,
 };
 
 #[derive(PartialEq, Eq, Debug)]
@@ -40,6 +39,7 @@ pub enum BatteryItem {
 const BAT_STATE_STRINGS: &[&str] = &["Fully Charged", "Charging", "Discharging", "Not Charging"];
 const BAT_NOTIFY_VALUES: &[u32] = &[5, 15, 20, 30];
 
+#[derive(Clone, Debug, Default)]
 pub struct Battery;
 
 impl Battery {

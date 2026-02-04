@@ -5,10 +5,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    command,
+    ICON_END, ICON_EXT, command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    ICON_END, ICON_EXT,
 };
 
 #[derive(Subcommand)]
@@ -32,6 +31,7 @@ pub enum RamItem {
     All,
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct Ram;
 
 impl Ram {

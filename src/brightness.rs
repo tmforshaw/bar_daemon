@@ -4,10 +4,9 @@ use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    command,
+    ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT, command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT,
 };
 
 pub const MONITOR_ID: &str = "nvidia_wmi_ec_backlight";
@@ -53,6 +52,7 @@ pub enum BrightnessItem {
     All,
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct Brightness;
 
 impl Brightness {

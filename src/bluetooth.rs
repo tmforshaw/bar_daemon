@@ -2,11 +2,11 @@ use clap::{ArgAction, Subcommand};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT,
     cli::parse_bool,
     command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT,
 };
 
 #[derive(Subcommand)]
@@ -39,6 +39,7 @@ pub enum BluetoothItem {
     All,
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct Bluetooth;
 
 impl Bluetooth {

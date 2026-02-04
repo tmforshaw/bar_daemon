@@ -39,7 +39,7 @@ pub enum DaemonError {
     IntError(#[from] std::num::TryFromIntError),
 
     #[error("Mutex couldn't be locked")]
-    MutexLockError,
+    RwLockError,
 
     #[error("Could not convert usize to TupleName")]
     TupleNameError,

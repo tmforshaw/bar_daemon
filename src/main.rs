@@ -25,6 +25,7 @@ pub mod listener;
 pub mod log_linear;
 pub mod ram;
 pub mod shutdown;
+pub mod snapshot;
 pub mod tuples;
 pub mod volume;
 
