@@ -161,23 +161,23 @@ pub fn evaluate_item(item: DaemonItem, volume_item: &VolumeItem, value: Option<S
 
         DaemonReply::Value { item, value }
     } else {
-        // Get value
+        // Get value (use current_state since this won't change without bar_daemon changing it)
         match volume_item {
             VolumeItem::Percent => DaemonReply::Value {
                 item,
-                value: default_source().read_percent()?.to_string(),
+                value: current_state()?.volume.percent.to_string(),
             },
             VolumeItem::Mute => DaemonReply::Value {
                 item,
-                value: default_source().read_mute()?.to_string(),
+                value: current_state()?.volume.mute.to_string(),
             },
             VolumeItem::Icon => DaemonReply::Value {
                 item,
-                value: latest()?.get_icon(),
+                value: current_state()?.volume.get_icon(),
             },
             VolumeItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest()?.to_tuples(),
+                tuples: current_state()?.volume.to_tuples(),
             },
         }
     })
