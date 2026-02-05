@@ -13,7 +13,7 @@ use crate::{
     bluetooth::{self, BluetoothItem},
     brightness::{self, BrightnessItem, KEYBOARD_ID, MONITOR_ID},
     error::DaemonError,
-    fan_profile::{FanProfile, FanProfileItem},
+    fan_profile::{self, FanProfileItem},
     listener::{Client, ClientMessage, SharedClients, handle_clients, poll_values},
     ram::{Ram, RamItem},
     shutdown::shutdown_signal,
@@ -204,7 +204,7 @@ pub async fn handle_socket(
                             },
                             DaemonItem::Ram(_) => ClientMessage::UpdateRam,
                             DaemonItem::FanProfile(_) => {
-                                FanProfile::notify()?;
+                                fan_profile::notify()?;
 
                                 ClientMessage::UpdateFanProfile
                             },
@@ -263,7 +263,7 @@ pub fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply,
         DaemonItem::Volume(volume_item) => volume::evaluate_item(item, &volume_item, Some(value))?,
         DaemonItem::Brightness(brightness_item) => brightness::evaluate_item(item, &brightness_item, Some(value))?,
         DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item, &bluetooth_item, Some(value))?,
-        DaemonItem::FanProfile(fan_profile_item) => FanProfile::parse_item(item, &fan_profile_item, Some(value))?,
+        DaemonItem::FanProfile(fan_profile_item) => fan_profile::evaluate_item(item, &fan_profile_item, Some(value))?,
         _ => DaemonReply::Value { item, value },
     };
 
@@ -279,7 +279,7 @@ pub async fn match_get_command(item: DaemonItem) -> Result<DaemonReply, DaemonEr
         DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item.clone(), &bluetooth_item, None)?,
         DaemonItem::Battery(battery_item) => battery::evaluate_item(item.clone(), &battery_item)?,
         DaemonItem::Ram(ram_item) => Ram::parse_item(item.clone(), &ram_item)?,
-        DaemonItem::FanProfile(fan_profile_item) => FanProfile::parse_item(item.clone(), &fan_profile_item, None)?,
+        DaemonItem::FanProfile(fan_profile_item) => fan_profile::evaluate_item(item.clone(), &fan_profile_item, None)?,
         DaemonItem::All => DaemonReply::AllTuples {
             tuples: get_all_tuples().await?,
         },

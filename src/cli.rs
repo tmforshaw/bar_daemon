@@ -6,7 +6,7 @@ use crate::{
     brightness::{self, BrightnessGetCommands, BrightnessSetCommands, BrightnessUpdateCommands},
     daemon::{DaemonItem, DaemonMessage, do_daemon, send_daemon_messaage},
     error::DaemonError,
-    fan_profile::{FanProfile, FanProfileGetCommands, FanProfileSetCommands, FanProfileUpdateCommands},
+    fan_profile::{self, FanProfileGetCommands, FanProfileSetCommands, FanProfileUpdateCommands},
     listener::listen,
     ram::{Ram, RamGetCommands},
     volume::{self, VolumeGetCommands, VolumeSetCommands, VolumeUpdateCommands},
@@ -164,7 +164,7 @@ pub async fn match_cli() -> Result<(), DaemonError> {
                     GetCommands::Bluetooth { commands } => bluetooth::match_get_commands(&commands),
                     GetCommands::Battery { commands } => battery::match_get_commands(&commands),
                     GetCommands::Ram { commands } => Ram::match_get_commands(&commands),
-                    GetCommands::FanProfile { commands } => FanProfile::match_get_commands(&commands),
+                    GetCommands::FanProfile { commands } => fan_profile::match_get_commands(&commands),
                     GetCommands::All => DaemonMessage::Get { item: DaemonItem::All },
                 }
             } else {
@@ -175,13 +175,13 @@ pub async fn match_cli() -> Result<(), DaemonError> {
             SetCommands::Volume { commands } => volume::match_set_commands(commands),
             SetCommands::Brightness { commands } => brightness::match_set_commands(commands),
             SetCommands::Bluetooth { commands } => bluetooth::match_set_commands(&commands),
-            SetCommands::FanProfile { commands } => FanProfile::match_set_commands(commands),
+            SetCommands::FanProfile { commands } => fan_profile::match_set_commands(commands),
         },
         CliCommands::Update { commands } => match commands {
             UpdateCommands::Volume { commands } => volume::match_update_commands(&commands),
             UpdateCommands::Brightness { commands } => brightness::match_update_commands(&commands),
             UpdateCommands::Bluetooth { commands } => bluetooth::match_update_commands(&commands),
-            UpdateCommands::FanProfile { commands } => FanProfile::match_update_commands(&commands),
+            UpdateCommands::FanProfile { commands } => fan_profile::match_update_commands(&commands),
         },
         CliCommands::Listen => {
             listen().await?;

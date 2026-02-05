@@ -1,7 +1,6 @@
 use crate::{
     battery::{self},
     error::DaemonError,
-    fan_profile::FanProfile,
     ram::Ram,
     snapshot::current_snapshot,
 };
@@ -46,7 +45,7 @@ pub fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, Strin
         TupleName::Bluetooth => Ok(current_snapshot()?.bluetooth.to_tuples()),
         TupleName::Battery => Ok(battery::latest()?.to_tuples()),
         TupleName::Ram => Ram::get_tuples(),
-        TupleName::FanProfile => FanProfile::get_tuples(),
+        TupleName::FanProfile => Ok(current_snapshot()?.fan_profile.to_tuples()),
     }
 }
 
