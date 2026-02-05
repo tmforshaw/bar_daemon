@@ -1,6 +1,7 @@
 use crate::{
     battery::{self},
     error::DaemonError,
+    fan_profile,
     ram::{self},
     snapshot::current_snapshot,
 };
@@ -45,7 +46,7 @@ pub fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, Strin
         TupleName::Bluetooth => current_snapshot()?.bluetooth.to_tuples(),
         TupleName::Battery => battery::latest()?.to_tuples(),
         TupleName::Ram => ram::latest()?.to_tuples(),
-        TupleName::FanProfile => current_snapshot()?.fan_profile.to_tuples(),
+        TupleName::FanProfile => fan_profile::latest()?.to_tuples(), // Special case since the OS changes fan mode when plugging/unplugging AC
     })
 }
 
