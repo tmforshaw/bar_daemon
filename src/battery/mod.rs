@@ -1,6 +1,6 @@
 use crate::error::DaemonError;
 
-use source::default_source;
+use source::{BatterySource, default_source};
 pub use value::{Battery, BatteryGetCommands, BatteryItem, evaluate_item, match_get_commands, notify};
 
 mod source;

@@ -5,7 +5,7 @@ use super::{default_source, latest};
 
 use crate::{
     ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT,
-    battery::source::BatterySource,
+    battery::BatterySource,
     command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,

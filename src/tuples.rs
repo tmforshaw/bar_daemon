@@ -1,6 +1,5 @@
 use crate::{
     battery::{self},
-    brightness::Brightness,
     error::DaemonError,
     fan_profile::FanProfile,
     ram::Ram,
@@ -43,7 +42,7 @@ pub fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, Strin
     // TODO use latest() for polled values and current_snapshot() for values which don't change without user intervention
     match tuple_name {
         TupleName::Volume => Ok(current_snapshot()?.volume.to_tuples()),
-        TupleName::Brightness => Brightness::get_tuples(),
+        TupleName::Brightness => Ok(current_snapshot()?.brightness.to_tuples()),
         TupleName::Bluetooth => Ok(current_snapshot()?.bluetooth.to_tuples()),
         TupleName::Battery => Ok(battery::latest()?.to_tuples()),
         TupleName::Ram => Ram::get_tuples(),

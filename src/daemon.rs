@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     battery::{self, BatteryItem},
     bluetooth::{self, BluetoothItem},
-    brightness::{Brightness, BrightnessItem, KEYBOARD_ID, MONITOR_ID},
+    brightness::{self, BrightnessItem, KEYBOARD_ID, MONITOR_ID},
     error::DaemonError,
     fan_profile::{FanProfile, FanProfileItem},
     listener::{Client, ClientMessage, SharedClients, handle_clients, poll_values},
@@ -187,8 +187,8 @@ pub async fn handle_socket(
                             },
                             DaemonItem::Brightness(_) => {
                                 // TODO
-                                Brightness::notify(MONITOR_ID)?;
-                                Brightness::notify(KEYBOARD_ID)?;
+                                brightness::notify(MONITOR_ID)?;
+                                brightness::notify(KEYBOARD_ID)?;
 
                                 ClientMessage::UpdateBrightness
                             },
@@ -261,7 +261,7 @@ pub async fn send_daemon_messaage(message: DaemonMessage) -> Result<DaemonReply,
 pub fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply, DaemonError> {
     let message = match item.clone() {
         DaemonItem::Volume(volume_item) => volume::evaluate_item(item, &volume_item, Some(value))?,
-        DaemonItem::Brightness(brightness_item) => Brightness::parse_item(item, &brightness_item, Some(value))?,
+        DaemonItem::Brightness(brightness_item) => brightness::evaluate_item(item, &brightness_item, Some(value))?,
         DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item, &bluetooth_item, Some(value))?,
         DaemonItem::FanProfile(fan_profile_item) => FanProfile::parse_item(item, &fan_profile_item, Some(value))?,
         _ => DaemonReply::Value { item, value },
@@ -275,7 +275,7 @@ pub fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply,
 pub async fn match_get_command(item: DaemonItem) -> Result<DaemonReply, DaemonError> {
     let message = match item.clone() {
         DaemonItem::Volume(volume_item) => volume::evaluate_item(item.clone(), &volume_item, None)?,
-        DaemonItem::Brightness(brightness_item) => Brightness::parse_item(item.clone(), &brightness_item, None)?,
+        DaemonItem::Brightness(brightness_item) => brightness::evaluate_item(item.clone(), &brightness_item, None)?,
         DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item.clone(), &bluetooth_item, None)?,
         DaemonItem::Battery(battery_item) => battery::evaluate_item(item.clone(), &battery_item)?,
         DaemonItem::Ram(ram_item) => Ram::parse_item(item.clone(), &ram_item)?,

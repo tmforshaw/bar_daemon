@@ -1,5 +1,7 @@
 use std::str::SplitWhitespace;
 
+use itertools::Itertools;
+
 use super::Volume;
 use crate::{
     command,
@@ -165,7 +167,7 @@ fn get_wpctl_output() -> Result<String, DaemonError> {
     command::run("wpctl", &["get-volume", "@DEFAULT_SINK@"])
 }
 
-fn get_wpctl_split(output: &str) -> std::str::SplitWhitespace<'_> {
+fn get_wpctl_split(output: &str) -> SplitWhitespace<'_> {
     // Left with only volume number, and muted status
     output.trim_start_matches("Volume: ").split_whitespace()
 }
@@ -180,6 +182,6 @@ fn get_linear_percent_from_wpctl_split(mut split: SplitWhitespace) -> Result<u32
     if let Some(volume_str) = split.next() {
         Ok(logarithmic_to_linear(volume_str.parse::<f64>()? * 100.) as u32)
     } else {
-        Err(DaemonError::ParseError(split.collect()))
+        Err(DaemonError::ParseError(split.join(" ")))
     }
 }

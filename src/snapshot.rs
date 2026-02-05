@@ -47,14 +47,6 @@ pub fn current_snapshot() -> Result<Snapshot, DaemonError> {
 
 /// # Errors
 /// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
-pub fn set_snapshot_volume(volume: Volume) -> Result<(), DaemonError> {
-    CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.volume = volume;
-
-    Ok(())
-}
-
-/// # Errors
-/// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
 pub fn set_snapshot_battery(battery: Battery) -> Result<(), DaemonError> {
     CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.battery = battery;
 
@@ -65,6 +57,38 @@ pub fn set_snapshot_battery(battery: Battery) -> Result<(), DaemonError> {
 /// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
 pub fn set_snapshot_bluetooth(bluetooth: Bluetooth) -> Result<(), DaemonError> {
     CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.bluetooth = bluetooth;
+
+    Ok(())
+}
+
+/// # Errors
+/// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
+pub fn set_snapshot_brightness(brightness: Brightness) -> Result<(), DaemonError> {
+    CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.brightness = brightness;
+
+    Ok(())
+}
+
+/// # Errors
+/// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
+pub fn set_snapshot_fan_profile(fan_profile: FanProfile) -> Result<(), DaemonError> {
+    CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.fan_profile = fan_profile;
+
+    Ok(())
+}
+
+/// # Errors
+/// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
+pub fn set_snapshot_ram(ram: Ram) -> Result<(), DaemonError> {
+    CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.ram = ram;
+
+    Ok(())
+}
+
+/// # Errors
+/// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
+pub fn set_snapshot_volume(volume: Volume) -> Result<(), DaemonError> {
+    CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.volume = volume;
 
     Ok(())
 }
