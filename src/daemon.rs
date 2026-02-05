@@ -15,7 +15,7 @@ use crate::{
     error::DaemonError,
     fan_profile::{self, FanProfileItem},
     listener::{Client, ClientMessage, SharedClients, handle_clients, poll_values},
-    ram::{Ram, RamItem},
+    ram::{self, RamItem},
     shutdown::shutdown_signal,
     tuples::get_all_tuples,
     volume::{self, VolumeItem},
@@ -278,7 +278,7 @@ pub async fn match_get_command(item: DaemonItem) -> Result<DaemonReply, DaemonEr
         DaemonItem::Brightness(brightness_item) => brightness::evaluate_item(item.clone(), &brightness_item, None)?,
         DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item.clone(), &bluetooth_item, None)?,
         DaemonItem::Battery(battery_item) => battery::evaluate_item(item.clone(), &battery_item)?,
-        DaemonItem::Ram(ram_item) => Ram::parse_item(item.clone(), &ram_item)?,
+        DaemonItem::Ram(ram_item) => ram::evaluate_item(item.clone(), &ram_item)?,
         DaemonItem::FanProfile(fan_profile_item) => fan_profile::evaluate_item(item.clone(), &fan_profile_item, None)?,
         DaemonItem::All => DaemonReply::AllTuples {
             tuples: get_all_tuples().await?,

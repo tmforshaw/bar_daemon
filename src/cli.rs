@@ -8,7 +8,7 @@ use crate::{
     error::DaemonError,
     fan_profile::{self, FanProfileGetCommands, FanProfileSetCommands, FanProfileUpdateCommands},
     listener::listen,
-    ram::{Ram, RamGetCommands},
+    ram::{self, RamGetCommands},
     volume::{self, VolumeGetCommands, VolumeSetCommands, VolumeUpdateCommands},
 };
 
@@ -163,7 +163,7 @@ pub async fn match_cli() -> Result<(), DaemonError> {
                     GetCommands::Brightness { commands } => brightness::match_get_commands(&commands),
                     GetCommands::Bluetooth { commands } => bluetooth::match_get_commands(&commands),
                     GetCommands::Battery { commands } => battery::match_get_commands(&commands),
-                    GetCommands::Ram { commands } => Ram::match_get_commands(&commands),
+                    GetCommands::Ram { commands } => ram::match_get_commands(&commands),
                     GetCommands::FanProfile { commands } => fan_profile::match_get_commands(&commands),
                     GetCommands::All => DaemonMessage::Get { item: DaemonItem::All },
                 }

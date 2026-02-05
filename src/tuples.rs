@@ -1,7 +1,7 @@
 use crate::{
     battery::{self},
     error::DaemonError,
-    ram::Ram,
+    ram::{self},
     snapshot::current_snapshot,
 };
 
@@ -38,15 +38,15 @@ impl TryFrom<usize> for TupleName {
 /// # Errors
 /// Returns an error if the specified tuples can't be gotten
 pub fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, String)>, DaemonError> {
-    // TODO use latest() for polled values and current_snapshot() for values which don't change without user intervention
-    match tuple_name {
-        TupleName::Volume => Ok(current_snapshot()?.volume.to_tuples()),
-        TupleName::Brightness => Ok(current_snapshot()?.brightness.to_tuples()),
-        TupleName::Bluetooth => Ok(current_snapshot()?.bluetooth.to_tuples()),
-        TupleName::Battery => Ok(battery::latest()?.to_tuples()),
-        TupleName::Ram => Ram::get_tuples(),
-        TupleName::FanProfile => Ok(current_snapshot()?.fan_profile.to_tuples()),
-    }
+    // use latest() for polled values and current_snapshot() for values which don't change without user intervention
+    Ok(match tuple_name {
+        TupleName::Volume => current_snapshot()?.volume.to_tuples(),
+        TupleName::Brightness => current_snapshot()?.brightness.to_tuples(),
+        TupleName::Bluetooth => current_snapshot()?.bluetooth.to_tuples(),
+        TupleName::Battery => battery::latest()?.to_tuples(),
+        TupleName::Ram => ram::latest()?.to_tuples(),
+        TupleName::FanProfile => current_snapshot()?.fan_profile.to_tuples(),
+    })
 }
 
 /// # Errors
