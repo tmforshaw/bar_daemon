@@ -3,16 +3,16 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::UnixStream,
-    sync::{mpsc, Mutex, Notify},
+    sync::{Mutex, Notify, mpsc},
 };
 use uuid::Uuid;
 
 use crate::{
+    POLLING_RATE,
     daemon::{DaemonMessage, SOCKET_PATH},
     error::DaemonError,
     json::tuples_to_json,
-    tuples::{get_all_tuples, tuple_name_to_tuples, TupleName, TUPLE_NAMES},
-    POLLING_RATE,
+    tuples::{TUPLE_NAMES, TupleName, get_all_tuples, tuple_name_to_tuples},
 };
 
 pub struct Client {
@@ -107,7 +107,7 @@ pub async fn handle_clients(
                         let mut tuples = tuples.lock().await;
                         (*tuples)[tuple_name as usize] = (
                             TUPLE_NAMES[tuple_name as usize].to_string(),
-                            tuple_name_to_tuples(&tuple_name)?,
+                            tuple_name_to_tuples(&tuple_name).await?,
                         );
                     }
 

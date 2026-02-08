@@ -1,4 +1,7 @@
-use std::{sync::LazyLock, time::Instant};
+use std::{
+    sync::{Arc, LazyLock},
+    time::Instant,
+};
 
 use tokio::sync::RwLock;
 
@@ -24,7 +27,7 @@ pub struct Snapshot {
     pub timestamp: Option<Instant>,
 }
 
-static CURRENT_SNAPSHOT: LazyLock<RwLock<Snapshot>> = LazyLock::new(|| RwLock::new(Snapshot::default()));
+static CURRENT_SNAPSHOT: LazyLock<Arc<RwLock<Snapshot>>> = LazyLock::new(|| Arc::new(RwLock::new(Snapshot::default())));
 
 /// # Errors
 /// Returns an error if the current snapshot cannot be read due to `RwLock` Poisoning

@@ -144,29 +144,29 @@ pub async fn notify(prev_percent: u32) -> Result<(), DaemonError> {
 
 /// # Errors
 /// Returns an error if the requested value could not be parsed
-pub fn evaluate_item(item: DaemonItem, battery_item: &BatteryItem) -> Result<DaemonReply, DaemonError> {
+pub async fn evaluate_item(item: DaemonItem, battery_item: &BatteryItem) -> Result<DaemonReply, DaemonError> {
     Ok(
         // Get value (use latest() since this value changes without bar_daemon changing it)
         match battery_item {
             BatteryItem::State => DaemonReply::Value {
                 item,
-                value: BAT_STATE_STRINGS[default_source().read_state()? as usize].to_string(),
+                value: BAT_STATE_STRINGS[default_source().read_state().await? as usize].to_string(),
             },
             BatteryItem::Percent => DaemonReply::Value {
                 item,
-                value: default_source().read_percent()?.to_string(),
+                value: default_source().read_percent().await?.to_string(),
             },
             BatteryItem::Time => DaemonReply::Value {
                 item,
-                value: default_source().read_time()?,
+                value: default_source().read_time().await?,
             },
             BatteryItem::Icon => DaemonReply::Value {
                 item,
-                value: latest()?.get_icon(),
+                value: latest().await?.get_icon(),
             },
             BatteryItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest()?.to_tuples(),
+                tuples: latest().await?.to_tuples(),
             },
         },
     )

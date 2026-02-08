@@ -174,37 +174,37 @@ pub async fn handle_socket(
                             DaemonItem::All => ClientMessage::UpdateAll,
                         })?;
 
-                        match_set_command(item.clone(), value.clone())?
+                        match_set_command(item.clone(), value.clone()).await?
                     }
                     DaemonMessage::Get { item } => match_get_command(item.clone()).await?,
                     DaemonMessage::Update {item} => {
                         // Broadcast which value has been updated
                         clients_tx.send(match item {
                             DaemonItem::Volume(_) => {
-                                volume::notify()?;
+                                volume::notify().await?;
 
                                 ClientMessage::UpdateVolume
                             },
                             DaemonItem::Brightness(_) => {
                                 // TODO
-                                brightness::notify(MONITOR_ID)?;
-                                brightness::notify(KEYBOARD_ID)?;
+                                brightness::notify(MONITOR_ID).await?;
+                                brightness::notify(KEYBOARD_ID).await?;
 
                                 ClientMessage::UpdateBrightness
                             },
                             DaemonItem::Bluetooth(_) => {
-                                bluetooth::notify()?;
+                                bluetooth::notify().await?;
 
                                 ClientMessage::UpdateBluetooth
                             },
                             DaemonItem::Battery(_) => {
-                                battery::notify(u32::MAX)?;
+                                battery::notify(u32::MAX).await?;
 
                                 ClientMessage::UpdateBattery
                             },
                             DaemonItem::Ram(_) => ClientMessage::UpdateRam,
                             DaemonItem::FanProfile(_) => {
-                                fan_profile::notify()?;
+                                fan_profile::notify().await?;
 
                                 ClientMessage::UpdateFanProfile
                             },
@@ -258,12 +258,12 @@ pub async fn send_daemon_messaage(message: DaemonMessage) -> Result<DaemonReply,
 
 /// # Errors
 /// Returns an error if the requested value could not be parsed
-pub fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply, DaemonError> {
+pub async fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply, DaemonError> {
     let message = match item.clone() {
-        DaemonItem::Volume(volume_item) => volume::evaluate_item(item, &volume_item, Some(value))?,
-        DaemonItem::Brightness(brightness_item) => brightness::evaluate_item(item, &brightness_item, Some(value))?,
-        DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item, &bluetooth_item, Some(value))?,
-        DaemonItem::FanProfile(fan_profile_item) => fan_profile::evaluate_item(item, &fan_profile_item, Some(value))?,
+        DaemonItem::Volume(volume_item) => volume::evaluate_item(item, &volume_item, Some(value)).await?,
+        DaemonItem::Brightness(brightness_item) => brightness::evaluate_item(item, &brightness_item, Some(value)).await?,
+        DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item, &bluetooth_item, Some(value)).await?,
+        DaemonItem::FanProfile(fan_profile_item) => fan_profile::evaluate_item(item, &fan_profile_item, Some(value)).await?,
         _ => DaemonReply::Value { item, value },
     };
 
@@ -274,12 +274,12 @@ pub fn match_set_command(item: DaemonItem, value: String) -> Result<DaemonReply,
 /// Returns an error if the requested value could not be parsed
 pub async fn match_get_command(item: DaemonItem) -> Result<DaemonReply, DaemonError> {
     let message = match item.clone() {
-        DaemonItem::Volume(volume_item) => volume::evaluate_item(item.clone(), &volume_item, None)?,
-        DaemonItem::Brightness(brightness_item) => brightness::evaluate_item(item.clone(), &brightness_item, None)?,
-        DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item.clone(), &bluetooth_item, None)?,
-        DaemonItem::Battery(battery_item) => battery::evaluate_item(item.clone(), &battery_item)?,
-        DaemonItem::Ram(ram_item) => ram::evaluate_item(item.clone(), &ram_item)?,
-        DaemonItem::FanProfile(fan_profile_item) => fan_profile::evaluate_item(item.clone(), &fan_profile_item, None)?,
+        DaemonItem::Volume(volume_item) => volume::evaluate_item(item.clone(), &volume_item, None).await?,
+        DaemonItem::Brightness(brightness_item) => brightness::evaluate_item(item.clone(), &brightness_item, None).await?,
+        DaemonItem::Bluetooth(bluetooth_item) => bluetooth::evaluate_item(item.clone(), &bluetooth_item, None).await?,
+        DaemonItem::Battery(battery_item) => battery::evaluate_item(item.clone(), &battery_item).await?,
+        DaemonItem::Ram(ram_item) => ram::evaluate_item(item.clone(), &ram_item).await?,
+        DaemonItem::FanProfile(fan_profile_item) => fan_profile::evaluate_item(item.clone(), &fan_profile_item, None).await?,
         DaemonItem::All => DaemonReply::AllTuples {
             tuples: get_all_tuples().await?,
         },

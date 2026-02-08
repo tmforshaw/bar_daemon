@@ -94,7 +94,7 @@ impl BrightnessSource for BctlBrightness {
         let new_monitor = latest().await?.monitor;
 
         if prev_brightness.monitor.partial_cmp(&new_monitor) != Some(std::cmp::Ordering::Equal) {
-            notify(MONITOR_ID)?;
+            notify(MONITOR_ID).await?;
         }
 
         // Update snapshot
@@ -118,7 +118,7 @@ impl BrightnessSource for BctlBrightness {
         let new_keyboard = latest().await?.keyboard;
 
         if prev_brightness.keyboard.partial_cmp(&new_keyboard) != Some(std::cmp::Ordering::Equal) {
-            notify(KEYBOARD_ID)?;
+            notify(KEYBOARD_ID).await?;
         }
 
         // Update snapshot

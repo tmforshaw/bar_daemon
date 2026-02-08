@@ -115,9 +115,9 @@ impl Volume {
 /// # Errors
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
-pub fn notify() -> Result<(), DaemonError> {
+pub async fn notify() -> Result<(), DaemonError> {
     // Get the current volume from the state
-    let volume = current_snapshot()?.volume;
+    let volume = current_snapshot().await.volume.unwrap_or_default();
 
     let percent = volume.percent;
     let icon = volume.get_icon();
@@ -144,44 +144,49 @@ pub fn notify() -> Result<(), DaemonError> {
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
-pub fn evaluate_item(item: DaemonItem, volume_item: &VolumeItem, value: Option<String>) -> Result<DaemonReply, DaemonError> {
+pub async fn evaluate_item(
+    item: DaemonItem,
+    volume_item: &VolumeItem,
+    value: Option<String>,
+) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
         // Get the current volume before the change
-        let prev_volume_obj = current_snapshot()?.volume;
+        let prev_volume_obj = current_snapshot().await.volume.unwrap_or_default();
 
         // Set value
         match volume_item {
-            VolumeItem::Percent => default_source().set_percent(value.as_str())?,
-            VolumeItem::Mute => default_source().set_mute(value.as_str())?,
+            VolumeItem::Percent => default_source().set_percent(value.as_str()).await?,
+            VolumeItem::Mute => default_source().set_mute(value.as_str()).await?,
             _ => {}
         }
 
-        let new_volume_obj = latest()?;
+        let new_volume_obj = latest().await?;
 
         if prev_volume_obj != new_volume_obj {
             // Do a notification
-            notify()?;
+            notify().await?;
         }
 
         DaemonReply::Value { item, value }
     } else {
+        let volume = current_snapshot().await.volume.unwrap_or_default();
         // Get value (use current_snapshot since this won't change without bar_daemon changing it)
         match volume_item {
             VolumeItem::Percent => DaemonReply::Value {
                 item,
-                value: current_snapshot()?.volume.percent.to_string(),
+                value: volume.percent.to_string(),
             },
             VolumeItem::Mute => DaemonReply::Value {
                 item,
-                value: current_snapshot()?.volume.mute.to_string(),
+                value: volume.mute.to_string(),
             },
             VolumeItem::Icon => DaemonReply::Value {
                 item,
-                value: current_snapshot()?.volume.get_icon(),
+                value: volume.get_icon(),
             },
             VolumeItem::All => DaemonReply::Tuples {
                 item,
-                tuples: current_snapshot()?.volume.to_tuples(),
+                tuples: volume.to_tuples(),
             },
         }
     })

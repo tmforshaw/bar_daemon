@@ -112,8 +112,8 @@ impl Brightness {
 
 /// # Errors
 /// Returns an error if the requested value could not be parsed
-pub fn notify(device_id: &str) -> Result<(), DaemonError> {
-    let brightness = current_snapshot()?.brightness;
+pub async fn notify(device_id: &str) -> Result<(), DaemonError> {
+    let brightness = current_snapshot().await.brightness.unwrap_or_default();
 
     let percent = if device_id == MONITOR_ID {
         brightness.monitor
@@ -185,7 +185,7 @@ pub const fn match_update_commands(commands: &BrightnessUpdateCommands) -> Daemo
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
-pub fn evaluate_item(
+pub async fn evaluate_item(
     item: DaemonItem,
     brightness_item: &BrightnessItem,
     value: Option<String>,
@@ -193,8 +193,8 @@ pub fn evaluate_item(
     Ok(if let Some(value) = value {
         // Set value
         match brightness_item {
-            BrightnessItem::Monitor => default_source().set_monitor(value.as_str())?,
-            BrightnessItem::Keyboard => default_source().set_keyboard(value.as_str())?,
+            BrightnessItem::Monitor => default_source().set_monitor(value.as_str()).await?,
+            BrightnessItem::Keyboard => default_source().set_keyboard(value.as_str()).await?,
             _ => {}
         }
 
@@ -206,19 +206,19 @@ pub fn evaluate_item(
         match brightness_item {
             BrightnessItem::Monitor => DaemonReply::Value {
                 item,
-                value: default_source().read_monitor()?.to_string(),
+                value: default_source().read_monitor().await?.to_string(),
             },
             BrightnessItem::Keyboard => DaemonReply::Value {
                 item,
-                value: default_source().read_keyboard()?.to_string(),
+                value: default_source().read_keyboard().await?.to_string(),
             },
             BrightnessItem::Icon => DaemonReply::Value {
                 item,
-                value: latest()?.get_icon(MONITOR_ID),
+                value: latest().await?.get_icon(MONITOR_ID),
             },
             BrightnessItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest()?.to_tuples(),
+                tuples: latest().await?.to_tuples(),
             },
         }
     })

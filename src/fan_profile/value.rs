@@ -96,8 +96,8 @@ impl FanProfile {
 
 /// # Errors
 /// Returns an error if the requested value could not be parsed
-pub fn notify() -> Result<(), DaemonError> {
-    let profile = current_snapshot()?.fan_profile.profile;
+pub async fn notify() -> Result<(), DaemonError> {
+    let profile = current_snapshot().await.fan_profile.unwrap_or_default().profile;
     let icon = FanProfile::get_icon();
 
     command::run(
@@ -120,17 +120,17 @@ pub fn notify() -> Result<(), DaemonError> {
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
-pub fn evaluate_item(
+pub async fn evaluate_item(
     item: DaemonItem,
     fan_profile_item: &FanProfileItem,
     value: Option<String>,
 ) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
-        let prev_fan_profile = current_snapshot()?.fan_profile;
+        let prev_fan_profile = current_snapshot().await.fan_profile.unwrap_or_default();
 
         // Set value
         if matches!(fan_profile_item, FanProfileItem::Profile) {
-            default_source().set_profile(value.as_str())?;
+            default_source().set_profile(value.as_str()).await?;
         }
 
         let new_profile = FanProfile {
@@ -143,13 +143,13 @@ pub fn evaluate_item(
 
         if prev_fan_profile != new_profile {
             // Do a notification
-            notify()?;
+            notify().await?;
         }
 
         DaemonReply::Value { item, value }
     } else {
         // Get value
-        let fan_profile = current_snapshot()?.fan_profile;
+        let fan_profile = current_snapshot().await.fan_profile.unwrap_or_default();
 
         match fan_profile_item {
             FanProfileItem::Profile => DaemonReply::Value {

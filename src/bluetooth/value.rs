@@ -81,8 +81,8 @@ impl Bluetooth {
 /// # Errors
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
-pub fn notify() -> Result<(), DaemonError> {
-    let bluetooth = current_snapshot()?.bluetooth;
+pub async fn notify() -> Result<(), DaemonError> {
+    let bluetooth = current_snapshot().await.bluetooth.unwrap_or_default();
 
     let icon = bluetooth.get_icon();
 
@@ -105,24 +105,24 @@ pub fn notify() -> Result<(), DaemonError> {
 }
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
-pub fn evaluate_item(
+pub async fn evaluate_item(
     item: DaemonItem,
     bluetooth_item: &BluetoothItem,
     value: Option<String>,
 ) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
-        let prev_state = current_snapshot()?.bluetooth;
+        let prev_state = current_snapshot().await.bluetooth.unwrap_or_default();
 
         // Set value
         if bluetooth_item == &BluetoothItem::State {
-            default_source().set_state(value.as_str())?;
+            default_source().set_state(value.as_str()).await?;
         }
 
-        let new_state = latest()?;
+        let new_state = latest().await?;
 
         if prev_state != new_state {
             // Do a notification
-            notify()?;
+            notify().await?;
         }
 
         DaemonReply::Value { item, value }
@@ -131,15 +131,15 @@ pub fn evaluate_item(
         match bluetooth_item {
             BluetoothItem::State => DaemonReply::Value {
                 item,
-                value: default_source().read_state()?.to_string(),
+                value: default_source().read_state().await?.to_string(),
             },
             BluetoothItem::Icon => DaemonReply::Value {
                 item,
-                value: latest()?.get_icon(),
+                value: latest().await?.get_icon(),
             },
             BluetoothItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest()?.to_tuples(),
+                tuples: latest().await?.to_tuples(),
             },
         }
     })

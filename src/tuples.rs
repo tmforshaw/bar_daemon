@@ -38,32 +38,39 @@ impl TryFrom<usize> for TupleName {
 
 /// # Errors
 /// Returns an error if the specified tuples can't be gotten
-pub fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, String)>, DaemonError> {
+pub async fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, String)>, DaemonError> {
     // use latest() for polled values and current_snapshot() for values which don't change without user intervention
     Ok(match tuple_name {
-        TupleName::Volume => current_snapshot()?.volume.to_tuples(),
-        TupleName::Brightness => current_snapshot()?.brightness.to_tuples(),
-        TupleName::Bluetooth => current_snapshot()?.bluetooth.to_tuples(),
-        TupleName::Battery => battery::latest()?.to_tuples(),
-        TupleName::Ram => ram::latest()?.to_tuples(),
-        TupleName::FanProfile => fan_profile::latest()?.to_tuples(), // Special case since the OS changes fan mode when plugging/unplugging AC
+        TupleName::Volume => current_snapshot().await.volume.unwrap_or_default().to_tuples(),
+        TupleName::Brightness => current_snapshot().await.brightness.unwrap_or_default().to_tuples(),
+        TupleName::Bluetooth => current_snapshot().await.bluetooth.unwrap_or_default().to_tuples(),
+        TupleName::Battery => battery::latest().await?.to_tuples(),
+        TupleName::Ram => ram::latest().await?.to_tuples(),
+        TupleName::FanProfile => fan_profile::latest().await?.to_tuples(), // Special case since the OS changes fan mode when plugging/unplugging AC
     })
 }
 
 /// # Errors
 /// Returns an error if the requested value could not be parsed
 pub async fn get_all_tuples() -> Result<Vec<(String, Vec<(String, String)>)>, DaemonError> {
-    TUPLE_NAMES
+    // Validate and convert indices
+    let tuple_names = TUPLE_NAMES
         .iter()
         .enumerate()
-        .map(|(i, &name)| {
-            TupleName::try_from(i).map(|tuple_name| {
-                // Convert the name to the respective tuples
-                tuple_name_to_tuples(&tuple_name).map(|tuples| {
-                    // Pair the name with the respective tuples
-                    (name.to_string(), tuples)
-                })
-            })
-        })
-        .collect::<Result<Result<Vec<_>, DaemonError>, DaemonError>>()?
+        .map(|(i, _)| TupleName::try_from(i))
+        .collect::<Result<Vec<_>, DaemonError>>()?;
+
+    // Convert names to their respective tuples (create async future for this)
+    let futures = tuple_names.iter().zip(TUPLE_NAMES.iter()).map(|(tuple_name, &name)| {
+        let name = name.to_string();
+
+        async move {
+            let tuples = tuple_name_to_tuples(tuple_name).await?;
+
+            Ok::<_, DaemonError>((name, tuples))
+        }
+    });
+
+    // Execute the futures concurrently to get the tuples
+    futures::future::try_join_all(futures).await
 }

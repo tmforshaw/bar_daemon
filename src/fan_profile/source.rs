@@ -8,7 +8,7 @@ use super::{FanProfile, FanState};
 
 pub const FAN_STATE_STRINGS: &[&str] = &["Performance", "Balanced", "Quiet"];
 
-pub trait FanProfileSource {
+pub trait FanProfileSource: Send + Sync {
     // Read from commands (Get latest values)
     async fn read(&self) -> Result<FanProfile, DaemonError>;
     async fn read_profile(&self) -> Result<FanState, DaemonError>;

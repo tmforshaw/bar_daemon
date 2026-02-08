@@ -82,21 +82,21 @@ impl Ram {
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
-pub fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<DaemonReply, DaemonError> {
+pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<DaemonReply, DaemonError> {
     Ok(
         // Get value
         match ram_item {
             RamItem::Total => DaemonReply::Value {
                 item,
-                value: default_source().read_total()?.to_string(),
+                value: default_source().read_total().await?.to_string(),
             },
             RamItem::Used => DaemonReply::Value {
                 item,
-                value: default_source().read_used()?.to_string(),
+                value: default_source().read_used().await?.to_string(),
             },
             RamItem::Percent => DaemonReply::Value {
                 item,
-                value: default_source().read_percent()?.to_string(),
+                value: default_source().read_percent().await?.to_string(),
             },
             RamItem::Icon => DaemonReply::Value {
                 item,
@@ -104,7 +104,7 @@ pub fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<DaemonReply
             },
             RamItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest()?.to_tuples(),
+                tuples: latest().await?.to_tuples(),
             },
         },
     )
