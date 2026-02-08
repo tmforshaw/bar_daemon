@@ -4,7 +4,9 @@ use crate::{
     command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    snapshot::current_snapshot,
+    impl_monitored,
+    monitored::Monitored,
+    snapshot::{Snapshot, current_snapshot},
 };
 
 use super::{VolumeSource, default_source, latest};
@@ -57,6 +59,8 @@ pub struct Volume {
     pub percent: u32,
     pub mute: bool,
 }
+
+impl_monitored!(Volume, volume);
 
 impl Volume {
     #[must_use]

@@ -7,7 +7,9 @@ use crate::{
     command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    snapshot::current_snapshot,
+    impl_monitored,
+    monitored::Monitored,
+    snapshot::{Snapshot, current_snapshot},
 };
 
 use super::{BluetoothSource, default_source, latest};
@@ -46,6 +48,8 @@ pub enum BluetoothItem {
 pub struct Bluetooth {
     pub state: bool,
 }
+
+impl_monitored!(Bluetooth, bluetooth);
 
 impl Bluetooth {
     #[must_use]

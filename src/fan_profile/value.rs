@@ -5,7 +5,9 @@ use crate::{
     ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT, command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    snapshot::current_snapshot,
+    impl_monitored,
+    monitored::Monitored,
+    snapshot::{Snapshot, current_snapshot},
 };
 
 use super::{FAN_STATE_STRINGS, FanProfileSource, default_source};
@@ -61,6 +63,8 @@ pub enum FanProfileItem {
 pub struct FanProfile {
     pub profile: FanState,
 }
+
+impl_monitored!(FanProfile, fan_profile);
 
 impl FanProfile {
     #[must_use]

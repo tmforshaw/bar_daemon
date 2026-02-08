@@ -5,7 +5,9 @@ use crate::{
     ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT, command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    snapshot::current_snapshot,
+    impl_monitored,
+    monitored::Monitored,
+    snapshot::{Snapshot, current_snapshot},
 };
 
 use super::{BrightnessSource, MONITOR_ID, default_source, latest};
@@ -50,11 +52,13 @@ pub enum BrightnessItem {
     All,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Brightness {
     pub monitor: u32,
     pub keyboard: u32,
 }
+
+impl_monitored!(Brightness, brightness);
 
 impl Brightness {
     #[must_use]

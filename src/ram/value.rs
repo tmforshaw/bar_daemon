@@ -5,6 +5,9 @@ use crate::{
     ICON_END, ICON_EXT,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
+    impl_monitored,
+    monitored::Monitored,
+    snapshot::Snapshot,
 };
 
 use super::{RamSource, default_source, latest};
@@ -30,12 +33,14 @@ pub enum RamItem {
     All,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Ram {
     pub total: u64,
     pub used: u64,
     pub percent: u32,
 }
+
+impl_monitored!(Ram, ram);
 
 impl Ram {
     #[must_use]

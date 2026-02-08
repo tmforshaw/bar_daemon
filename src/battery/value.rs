@@ -9,10 +9,12 @@ use crate::{
     command,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    snapshot::current_snapshot,
+    impl_monitored,
+    monitored::Monitored,
+    snapshot::{Snapshot, current_snapshot},
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
 pub enum BatteryState {
     FullyCharged = 0,
     Charging = 1,
@@ -45,12 +47,14 @@ pub enum BatteryItem {
 const BAT_STATE_STRINGS: &[&str] = &["Fully Charged", "Charging", "Discharging", "Not Charging"];
 const BAT_NOTIFY_VALUES: &[u32] = &[5, 15, 20, 30];
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Battery {
     pub state: BatteryState,
     pub percent: u32,
     pub time: String,
 }
+
+impl_monitored!(Battery, battery);
 
 impl Battery {
     #[must_use]
@@ -106,7 +110,9 @@ impl Battery {
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
 pub fn notify(prev_percent: u32) -> Result<(), DaemonError> {
-    let battery = current_snapshot()?.battery;
+    // Get Battery from snapshot, unless uninitialised then read the current value
+    // TODO
+    let battery = current_snapshot()?.battery.unwrap_or(default_source().read()?);
 
     let current_percent = battery.percent;
 
