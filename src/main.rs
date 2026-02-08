@@ -25,6 +25,7 @@ pub mod fan_profile;
 pub mod json;
 pub mod listener;
 pub mod log_linear;
+pub mod monitored;
 pub mod ram;
 pub mod shutdown;
 pub mod snapshot;

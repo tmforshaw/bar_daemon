@@ -8,31 +8,15 @@ use crate::{
     volume::Volume,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Snapshot {
-    pub battery: Battery,
-    pub bluetooth: Bluetooth,
-    pub brightness: Brightness,
-    pub fan_profile: FanProfile,
-    pub ram: Ram,
-    pub volume: Volume,
-    pub timestamp: Instant,
-}
-
-// TODO
-#[allow(clippy::default_constructed_unit_structs)]
-impl Default for Snapshot {
-    fn default() -> Self {
-        Self {
-            battery: Battery::default(),
-            bluetooth: Bluetooth::default(),
-            brightness: Brightness::default(),
-            fan_profile: FanProfile::default(),
-            ram: Ram::default(),
-            volume: Volume::default(),
-            timestamp: Instant::now(),
-        }
-    }
+    pub battery: Option<Battery>,
+    pub bluetooth: Option<Bluetooth>,
+    pub brightness: Option<Brightness>,
+    pub fan_profile: Option<FanProfile>,
+    pub ram: Option<Ram>,
+    pub volume: Option<Volume>,
+    pub timestamp: Option<Instant>,
 }
 
 static CURRENT_SNAPSHOT: LazyLock<RwLock<Snapshot>> = LazyLock::new(|| RwLock::new(Snapshot::default()));
