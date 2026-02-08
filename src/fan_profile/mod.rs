@@ -14,6 +14,6 @@ mod value;
 /// # Errors
 /// Returns an error if the latest `FanProfile` can't be read due to `RwLock` Poisoning
 /// Returns an error if the latest `FanProfile` can't be read due to parsing errors
-pub fn latest() -> Result<FanProfile, DaemonError> {
-    source::latest()
+pub async fn latest() -> Result<FanProfile, DaemonError> {
+    source::latest().await
 }

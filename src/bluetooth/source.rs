@@ -1,18 +1,18 @@
 use crate::{
     command,
     error::DaemonError,
-    snapshot::{current_snapshot, set_snapshot_bluetooth},
+    snapshot::{current_snapshot, update_snapshot},
 };
 
 use super::Bluetooth;
 
 pub trait BluetoothSource {
     // Read from commands (Get latest values)
-    fn read(&self) -> Result<Bluetooth, DaemonError>;
-    fn read_state(&self) -> Result<bool, DaemonError>;
+    async fn read(&self) -> Result<Bluetooth, DaemonError>;
+    async fn read_state(&self) -> Result<bool, DaemonError>;
 
     // Change values of source
-    fn set_state(&self, state_str: &str) -> Result<(), DaemonError>;
+    async fn set_state(&self, state_str: &str) -> Result<(), DaemonError>;
 }
 
 // -------------- Default Source ---------------
@@ -22,8 +22,8 @@ pub fn default_source() -> impl BluetoothSource {
     BluezBluetooth
 }
 
-pub fn latest() -> Result<Bluetooth, DaemonError> {
-    default_source().read()
+pub async fn latest() -> Result<Bluetooth, DaemonError> {
+    default_source().read().await
 }
 
 // ---------------- Bluez Source ---------------
@@ -31,7 +31,7 @@ pub fn latest() -> Result<Bluetooth, DaemonError> {
 pub struct BluezBluetooth;
 
 impl BluetoothSource for BluezBluetooth {
-    fn read(&self) -> Result<Bluetooth, DaemonError> {
+    async fn read(&self) -> Result<Bluetooth, DaemonError> {
         // Get output for bluetooth command (From Bluez)
         let output = command::run("bluetooth", &[])?;
 
@@ -44,23 +44,23 @@ impl BluetoothSource for BluezBluetooth {
                 Ok(Bluetooth { state: state == "on" })
             })?;
 
-        // Update current snapshot TODO Replace with soft error
-        set_snapshot_bluetooth(bluetooth.clone())?;
+        // Update current snapshot
+        update_snapshot(bluetooth.clone()).await?;
 
         Ok(bluetooth)
     }
 
-    fn read_state(&self) -> Result<bool, DaemonError> {
-        self.read().map(|bluetooth| bluetooth.state)
+    async fn read_state(&self) -> Result<bool, DaemonError> {
+        self.read().await.map(|bluetooth| bluetooth.state)
     }
 
-    fn set_state(&self, state_str: &str) -> Result<(), DaemonError> {
+    async fn set_state(&self, state_str: &str) -> Result<(), DaemonError> {
         let new_state;
 
         // Allow toggling of the bluetooth state
         let state = match state_str {
             "toggle" => {
-                new_state = !current_snapshot()?.bluetooth.state;
+                new_state = !current_snapshot().await.bluetooth.unwrap_or_default().state;
 
                 "toggle"
             }
@@ -80,7 +80,7 @@ impl BluetoothSource for BluezBluetooth {
         command::run("bluetooth", &[state])?;
 
         // Change the value within the snapshot
-        set_snapshot_bluetooth(Bluetooth { state: new_state })?;
+        update_snapshot(Bluetooth { state: new_state }).await?;
 
         Ok(())
     }

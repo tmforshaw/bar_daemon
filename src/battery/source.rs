@@ -4,15 +4,15 @@ use super::value::{Battery, BatteryState};
 use crate::{
     command,
     error::DaemonError,
-    snapshot::{current_snapshot, set_snapshot_battery},
+    snapshot::{current_snapshot, update_snapshot},
 };
 
 pub trait BatterySource {
     // Read from commands (Get latest values)
-    fn read(&self) -> Result<Battery, DaemonError>;
-    fn read_state(&self) -> Result<BatteryState, DaemonError>;
-    fn read_percent(&self) -> Result<u32, DaemonError>;
-    fn read_time(&self) -> Result<String, DaemonError>;
+    async fn read(&self) -> Result<Battery, DaemonError>;
+    async fn read_state(&self) -> Result<BatteryState, DaemonError>;
+    async fn read_percent(&self) -> Result<u32, DaemonError>;
+    async fn read_time(&self) -> Result<String, DaemonError>;
 }
 
 // -------------- Default Source ---------------
@@ -22,8 +22,8 @@ pub fn default_source() -> impl BatterySource {
     AcpiBattery
 }
 
-pub fn latest() -> Result<Battery, DaemonError> {
-    default_source().read()
+pub async fn latest() -> Result<Battery, DaemonError> {
+    default_source().read().await
 }
 
 // ---------------- ACPI Source ----------------
@@ -32,7 +32,7 @@ pub struct AcpiBattery;
 
 // TODO update snapshot when getting
 impl BatterySource for AcpiBattery {
-    fn read(&self) -> Result<Battery, DaemonError> {
+    async fn read(&self) -> Result<Battery, DaemonError> {
         // Get ACPI output and split it into sections
         let output = get_acpi_output()?;
         let output_split = get_acpi_split(&output);
@@ -45,12 +45,12 @@ impl BatterySource for AcpiBattery {
         };
 
         // Update current snapshot
-        set_snapshot_battery(battery.clone())?;
+        update_snapshot(battery.clone()).await?;
 
         Ok(battery)
     }
 
-    fn read_state(&self) -> Result<BatteryState, DaemonError> {
+    async fn read_state(&self) -> Result<BatteryState, DaemonError> {
         // Get ACPI output and split it into sections
         let output = get_acpi_output()?;
         let output_split = get_acpi_split(&output);
@@ -58,13 +58,13 @@ impl BatterySource for AcpiBattery {
         let state = get_state_from_acpi_split(output_split)?;
 
         // Update current snapshot TODO Replace with soft error
-        let battery = current_snapshot()?.battery;
-        set_snapshot_battery(Battery { state, ..battery })?;
+        let battery = current_snapshot().await.battery.unwrap_or_default();
+        update_snapshot(Battery { state, ..battery }).await?;
 
         Ok(state)
     }
 
-    fn read_percent(&self) -> Result<u32, DaemonError> {
+    async fn read_percent(&self) -> Result<u32, DaemonError> {
         // Get ACPI output and split it into sections
         let output = get_acpi_output()?;
         let output_split = get_acpi_split(&output);
@@ -72,13 +72,13 @@ impl BatterySource for AcpiBattery {
         let percent = get_percent_from_acpi_split(output_split)?;
 
         // Update current snapshot TODO Replace with soft error
-        let battery = current_snapshot()?.battery;
-        set_snapshot_battery(Battery { percent, ..battery })?;
+        let battery = current_snapshot().await.battery.unwrap_or_default();
+        update_snapshot(Battery { percent, ..battery }).await?;
 
         Ok(percent)
     }
 
-    fn read_time(&self) -> Result<String, DaemonError> {
+    async fn read_time(&self) -> Result<String, DaemonError> {
         // Get ACPI output and split it into sections
         let output = get_acpi_output()?;
         let output_split = get_acpi_split(&output);
@@ -86,11 +86,12 @@ impl BatterySource for AcpiBattery {
         let time = get_time_from_acpi_split(output_split)?;
 
         // Update current snapshot TODO Replace with soft error
-        let battery = current_snapshot()?.battery;
-        set_snapshot_battery(Battery {
+        let battery = current_snapshot().await.battery.unwrap_or_default();
+        update_snapshot(Battery {
             time: time.clone(),
             ..battery
-        })?;
+        })
+        .await?;
 
         Ok(time)
     }

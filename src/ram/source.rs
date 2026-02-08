@@ -3,17 +3,17 @@ use std::str::SplitWhitespace;
 use crate::{
     command,
     error::DaemonError,
-    snapshot::{current_snapshot, set_snapshot_ram},
+    snapshot::{current_snapshot, update_snapshot},
 };
 
 use super::Ram;
 
 pub trait RamSource {
     // Read from commands (Get latest values)
-    fn read(&self) -> Result<Ram, DaemonError>;
-    fn read_total(&self) -> Result<u64, DaemonError>;
-    fn read_used(&self) -> Result<u64, DaemonError>;
-    fn read_percent(&self) -> Result<u32, DaemonError>;
+    async fn read(&self) -> Result<Ram, DaemonError>;
+    async fn read_total(&self) -> Result<u64, DaemonError>;
+    async fn read_used(&self) -> Result<u64, DaemonError>;
+    async fn read_percent(&self) -> Result<u32, DaemonError>;
 }
 
 // -------------- Default Source ---------------
@@ -23,8 +23,8 @@ pub fn default_source() -> impl RamSource {
     ProcpsRam
 }
 
-pub fn latest() -> Result<Ram, DaemonError> {
-    default_source().read()
+pub async fn latest() -> Result<Ram, DaemonError> {
+    default_source().read().await
 }
 
 // ---------------- Procps Source --------------
@@ -35,7 +35,7 @@ impl RamSource for ProcpsRam {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn read(&self) -> Result<Ram, DaemonError> {
+    async fn read(&self) -> Result<Ram, DaemonError> {
         let output = get_procps_output()?;
         let output_split = get_procps_output_split(&output)?;
 
@@ -46,7 +46,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = Ram { total, used, percent };
-        set_snapshot_ram(ram.clone())?;
+        update_snapshot(ram.clone()).await?;
 
         Ok(ram)
     }
@@ -54,15 +54,15 @@ impl RamSource for ProcpsRam {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn read_total(&self) -> Result<u64, DaemonError> {
+    async fn read_total(&self) -> Result<u64, DaemonError> {
         let output = get_procps_output()?;
         let output_split = get_procps_output_split(&output)?;
 
         let total = get_procps_total_from_split(output_split)?;
 
         // Update snapshot
-        let ram = current_snapshot()?.ram;
-        set_snapshot_ram(Ram { total, ..ram })?;
+        let ram = current_snapshot().await.ram.unwrap_or_default();
+        update_snapshot(Ram { total, ..ram }).await?;
 
         Ok(total)
     }
@@ -70,15 +70,15 @@ impl RamSource for ProcpsRam {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn read_used(&self) -> Result<u64, DaemonError> {
+    async fn read_used(&self) -> Result<u64, DaemonError> {
         let output = get_procps_output()?;
         let output_split = get_procps_output_split(&output)?;
 
         let used = get_procps_used_from_split(output_split)?;
 
         // Update snapshot
-        let ram = current_snapshot()?.ram;
-        set_snapshot_ram(Ram { used, ..ram })?;
+        let ram = current_snapshot().await.ram.unwrap_or_default();
+        update_snapshot(Ram { used, ..ram }).await?;
 
         Ok(used)
     }
@@ -86,7 +86,7 @@ impl RamSource for ProcpsRam {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn read_percent(&self) -> Result<u32, DaemonError> {
+    async fn read_percent(&self) -> Result<u32, DaemonError> {
         let output = get_procps_output()?;
         let output_split = get_procps_output_split(&output)?;
 
@@ -96,8 +96,8 @@ impl RamSource for ProcpsRam {
         let percent = get_percent_from_used_total(used, total);
 
         // Update snapshot
-        let ram = current_snapshot()?.ram;
-        set_snapshot_ram(Ram { percent, ..ram })?;
+        let ram = current_snapshot().await.ram.unwrap_or_default();
+        update_snapshot(Ram { percent, ..ram }).await?;
 
         Ok(percent)
     }

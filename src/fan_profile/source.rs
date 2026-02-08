@@ -1,7 +1,7 @@
 use crate::{
     command,
     error::DaemonError,
-    snapshot::{current_snapshot, set_snapshot_fan_profile},
+    snapshot::{current_snapshot, update_snapshot},
 };
 
 use super::{FanProfile, FanState};
@@ -10,11 +10,11 @@ pub const FAN_STATE_STRINGS: &[&str] = &["Performance", "Balanced", "Quiet"];
 
 pub trait FanProfileSource {
     // Read from commands (Get latest values)
-    fn read(&self) -> Result<FanProfile, DaemonError>;
-    fn read_profile(&self) -> Result<FanState, DaemonError>;
+    async fn read(&self) -> Result<FanProfile, DaemonError>;
+    async fn read_profile(&self) -> Result<FanState, DaemonError>;
 
     // Change values of source
-    fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError>;
+    async fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError>;
 }
 
 // -------------- Default Source ---------------
@@ -24,8 +24,8 @@ pub fn default_source() -> impl FanProfileSource {
     AsusctlFanProfile
 }
 
-pub fn latest() -> Result<FanProfile, DaemonError> {
-    default_source().read()
+pub async fn latest() -> Result<FanProfile, DaemonError> {
+    default_source().read().await
 }
 
 // ---------------- Wpctl Source ---------------
@@ -38,8 +38,8 @@ impl FanProfileSource for AsusctlFanProfile {
     /// Returns an error if the correct line can't be found
     /// Returns an error if the correct part of the line can't be found
     /// Returns an error if the profile string can't be converted to ``FanState``
-    fn read(&self) -> Result<FanProfile, DaemonError> {
-        let profile = self.read_profile()?;
+    async fn read(&self) -> Result<FanProfile, DaemonError> {
+        let profile = self.read_profile().await?;
 
         Ok(FanProfile { profile })
     }
@@ -49,12 +49,12 @@ impl FanProfileSource for AsusctlFanProfile {
     /// Returns an error if the correct line can't be found
     /// Returns an error if the correct part of the line can't be found
     /// Returns an error if the profile string can't be converted to ``FanState``
-    fn read_profile(&self) -> Result<FanState, DaemonError> {
+    async fn read_profile(&self) -> Result<FanState, DaemonError> {
         // Read the profile from the output of asusctl
         let profile = get_asusctl_profile()?;
 
         // Update snapshot
-        set_snapshot_fan_profile(FanProfile { profile })?;
+        update_snapshot(FanProfile { profile }).await?;
 
         Ok(profile)
     }
@@ -62,7 +62,7 @@ impl FanProfileSource for AsusctlFanProfile {
     /// # Errors
     /// Returns an error if the given value is not a valid profile
     /// Returns an error if the set command can't be ran
-    fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError> {
+    async fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError> {
         let new_profile_idx;
 
         let new_profile = if let Some(index) = FAN_STATE_STRINGS.iter().position(|&profile| profile == profile_str.trim()) {
@@ -73,7 +73,7 @@ impl FanProfileSource for AsusctlFanProfile {
             profile_str.trim()
         } else {
             // Profile is set via cyclic function
-            let current_profile = current_snapshot()?.fan_profile.profile;
+            let current_profile = current_snapshot().await.fan_profile.unwrap_or_default().profile;
 
             match profile_str {
                 "next" => {
@@ -96,9 +96,10 @@ impl FanProfileSource for AsusctlFanProfile {
         command::run("asusctl", &["profile", "set", new_profile])?;
 
         // Update snapshot
-        set_snapshot_fan_profile(FanProfile {
+        update_snapshot(FanProfile {
             profile: new_profile_idx.into(),
-        })?;
+        })
+        .await?;
 
         Ok(())
     }

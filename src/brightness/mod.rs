@@ -13,6 +13,6 @@ mod value;
 /// # Errors
 /// Returns an error if the latest `Brightness` can't be read due to `RwLock` Poisoning
 /// Returns an error if the latest `Brightness` can't be read due to parsing errors
-pub fn latest() -> Result<Brightness, DaemonError> {
-    source::latest()
+pub async fn latest() -> Result<Brightness, DaemonError> {
+    source::latest().await
 }

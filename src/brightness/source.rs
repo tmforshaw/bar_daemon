@@ -5,7 +5,7 @@ use itertools::Itertools;
 use crate::{
     command,
     error::DaemonError,
-    snapshot::{current_snapshot, set_snapshot_brightness},
+    snapshot::{current_snapshot, update_snapshot},
 };
 
 use super::{Brightness, notify};
@@ -15,13 +15,13 @@ pub const KEYBOARD_ID: &str = "asus::kbd_backlight";
 
 pub trait BrightnessSource {
     // Read from commands (Get latest values)
-    fn read(&self) -> Result<Brightness, DaemonError>;
-    fn read_monitor(&self) -> Result<u32, DaemonError>;
-    fn read_keyboard(&self) -> Result<u32, DaemonError>;
+    async fn read(&self) -> Result<Brightness, DaemonError>;
+    async fn read_monitor(&self) -> Result<u32, DaemonError>;
+    async fn read_keyboard(&self) -> Result<u32, DaemonError>;
 
     // Change values of source
-    fn set_monitor(&self, percent_str: &str) -> Result<(), DaemonError>;
-    fn set_keyboard(&self, percent_str: &str) -> Result<(), DaemonError>;
+    async fn set_monitor(&self, percent_str: &str) -> Result<(), DaemonError>;
+    async fn set_keyboard(&self, percent_str: &str) -> Result<(), DaemonError>;
 }
 
 // -------------- Default Source ---------------
@@ -31,8 +31,8 @@ pub fn default_source() -> impl BrightnessSource {
     BctlBrightness
 }
 
-pub fn latest() -> Result<Brightness, DaemonError> {
-    default_source().read()
+pub async fn latest() -> Result<Brightness, DaemonError> {
+    default_source().read().await
 }
 
 // ---------------- Bctl Source ----------------
@@ -43,14 +43,14 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn read(&self) -> Result<Brightness, DaemonError> {
+    async fn read(&self) -> Result<Brightness, DaemonError> {
         // Get the brightness via brightnessctl
         let monitor = read_bctl_device(MONITOR_ID)?;
         let keyboard = read_bctl_device(KEYBOARD_ID)?;
 
         // Update the snapshot
         let brightness = Brightness { monitor, keyboard };
-        set_snapshot_brightness(brightness.clone())?;
+        update_snapshot(brightness.clone()).await?;
 
         Ok(brightness)
     }
@@ -58,13 +58,13 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn read_monitor(&self) -> Result<u32, DaemonError> {
+    async fn read_monitor(&self) -> Result<u32, DaemonError> {
         // Get the brightness via brightnessctl
         let monitor = read_bctl_device(MONITOR_ID)?;
 
         // Update the snapshot
-        let brightness = current_snapshot()?.brightness;
-        set_snapshot_brightness(Brightness { monitor, ..brightness })?;
+        let brightness = current_snapshot().await.brightness.unwrap_or_default();
+        update_snapshot(Brightness { monitor, ..brightness }).await?;
 
         Ok(monitor)
     }
@@ -72,13 +72,13 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn read_keyboard(&self) -> Result<u32, DaemonError> {
+    async fn read_keyboard(&self) -> Result<u32, DaemonError> {
         // Get the brightness via brightnessctl
         let keyboard = read_bctl_device(KEYBOARD_ID)?;
 
         // Update the snapshot
-        let brightness = current_snapshot()?.brightness;
-        set_snapshot_brightness(Brightness { keyboard, ..brightness })?;
+        let brightness = current_snapshot().await.brightness.unwrap_or_default();
+        update_snapshot(Brightness { keyboard, ..brightness }).await?;
 
         Ok(keyboard)
     }
@@ -86,22 +86,23 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn set_monitor(&self, percent_str: &str) -> Result<(), DaemonError> {
-        let prev_brightness = current_snapshot()?.brightness;
+    async fn set_monitor(&self, percent_str: &str) -> Result<(), DaemonError> {
+        let prev_brightness = current_snapshot().await.brightness.unwrap_or_default();
 
-        set_bctl_device(MONITOR_ID, percent_str)?;
+        set_bctl_device(MONITOR_ID, percent_str).await?;
 
-        let new_monitor = latest()?.monitor;
+        let new_monitor = latest().await?.monitor;
 
         if prev_brightness.monitor.partial_cmp(&new_monitor) != Some(std::cmp::Ordering::Equal) {
             notify(MONITOR_ID)?;
         }
 
         // Update snapshot
-        set_snapshot_brightness(Brightness {
+        update_snapshot(Brightness {
             monitor: new_monitor,
             ..prev_brightness
-        })?;
+        })
+        .await?;
 
         Ok(())
     }
@@ -109,22 +110,23 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    fn set_keyboard(&self, percent_str: &str) -> Result<(), DaemonError> {
-        let prev_brightness = current_snapshot()?.brightness;
+    async fn set_keyboard(&self, percent_str: &str) -> Result<(), DaemonError> {
+        let prev_brightness = current_snapshot().await.brightness.unwrap_or_default();
 
-        set_bctl_device(KEYBOARD_ID, percent_str)?;
+        set_bctl_device(KEYBOARD_ID, percent_str).await?;
 
-        let new_keyboard = latest()?.keyboard;
+        let new_keyboard = latest().await?.keyboard;
 
         if prev_brightness.keyboard.partial_cmp(&new_keyboard) != Some(std::cmp::Ordering::Equal) {
             notify(KEYBOARD_ID)?;
         }
 
         // Update snapshot
-        set_snapshot_brightness(Brightness {
+        update_snapshot(Brightness {
             keyboard: new_keyboard,
             ..prev_brightness
-        })?;
+        })
+        .await?;
 
         Ok(())
     }
@@ -168,10 +170,10 @@ fn read_bctl_device(device_id: &str) -> Result<u32, DaemonError> {
     get_bctl_percentage_from_split(output_split)
 }
 
-fn set_bctl_device(device_id: &str, percent_str: &str) -> Result<(), DaemonError> {
+async fn set_bctl_device(device_id: &str, percent_str: &str) -> Result<(), DaemonError> {
     // Change the percentage based on the delta percentage
     let percent = if percent_str.starts_with('+') || percent_str.starts_with('-') {
-        let current_brightness = current_snapshot()?.brightness;
+        let current_brightness = current_snapshot().await.brightness.unwrap_or_default();
 
         let delta_percent = percent_str.parse::<f64>()?;
 

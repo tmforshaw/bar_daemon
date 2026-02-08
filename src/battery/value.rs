@@ -109,10 +109,10 @@ impl Battery {
 /// # Errors
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
-pub fn notify(prev_percent: u32) -> Result<(), DaemonError> {
+pub async fn notify(prev_percent: u32) -> Result<(), DaemonError> {
     // Get Battery from snapshot, unless uninitialised then read the current value
     // TODO
-    let battery = current_snapshot()?.battery.unwrap_or(default_source().read()?);
+    let battery = current_snapshot().await.battery.unwrap_or(default_source().read().await?);
 
     let current_percent = battery.percent;
 

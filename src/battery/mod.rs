@@ -9,6 +9,6 @@ mod value;
 /// # Errors
 /// Returns an error if the latest `Battery` can't be read due to `RwLock` Poisoning
 /// Returns an error if the latest `Battery` can't be read due to parsing errors
-pub fn latest() -> Result<Battery, DaemonError> {
-    source::latest()
+pub async fn latest() -> Result<Battery, DaemonError> {
+    source::latest().await
 }
