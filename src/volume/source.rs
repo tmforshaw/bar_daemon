@@ -14,13 +14,13 @@ use crate::{
 #[allow(dead_code)]
 pub trait VolumeSource {
     // Read from commands (Get latest values)
-    async fn read(&self) -> Result<Volume, DaemonError>;
+    fn read(&self) -> impl std::future::Future<Output = Result<Volume, DaemonError>> + std::marker::Send;
     async fn read_percent(&self) -> Result<u32, DaemonError>;
     async fn read_mute(&self) -> Result<bool, DaemonError>;
 
     // Change values of source
-    async fn set_percent(&self, percent_str: &str) -> Result<(), DaemonError>;
-    async fn set_mute(&self, mute_str: &str) -> Result<(), DaemonError>;
+    fn set_percent(&self, percent_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + std::marker::Send;
+    fn set_mute(&self, mute_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + std::marker::Send;
 }
 
 // -------------- Default Source ---------------
@@ -38,7 +38,6 @@ pub async fn latest() -> Result<Volume, DaemonError> {
 
 pub struct WpctlVolume;
 
-// TODO Add soft errors instead of a hard exit
 impl VolumeSource for WpctlVolume {
     // Read from commands
 
@@ -53,7 +52,7 @@ impl VolumeSource for WpctlVolume {
         let volume = Volume { percent, mute };
 
         // Update current snapshot
-        update_snapshot(volume.clone()).await?;
+        update_snapshot(volume.clone()).await;
 
         Ok(volume)
     }
@@ -66,7 +65,7 @@ impl VolumeSource for WpctlVolume {
 
         // Update current snapshot
         let volume = current_snapshot().await.volume.unwrap_or_default();
-        update_snapshot(Volume { percent, ..volume }).await?;
+        update_snapshot(Volume { percent, ..volume }).await;
 
         Ok(percent)
     }
@@ -79,7 +78,7 @@ impl VolumeSource for WpctlVolume {
 
         // Update current snapshot
         let volume = current_snapshot().await.volume.unwrap_or_default();
-        update_snapshot(Volume { mute, ..volume }).await?;
+        update_snapshot(Volume { mute, ..volume }).await;
 
         Ok(mute)
     }
@@ -123,7 +122,7 @@ impl VolumeSource for WpctlVolume {
             percent: linear_percent,
             ..current_volume
         })
-        .await?;
+        .await;
 
         // Set the volume internally as a logarithmic value
         let logarithmic_percent = linear_to_logarithmic(f64::from(linear_percent));
@@ -161,7 +160,7 @@ impl VolumeSource for WpctlVolume {
             mute: new_mute,
             ..current_volume
         })
-        .await?;
+        .await;
 
         Ok(())
     }

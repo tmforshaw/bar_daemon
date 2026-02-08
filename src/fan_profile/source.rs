@@ -8,13 +8,13 @@ use super::{FanProfile, FanState};
 
 pub const FAN_STATE_STRINGS: &[&str] = &["Performance", "Balanced", "Quiet"];
 
-pub trait FanProfileSource: Send + Sync {
+pub trait FanProfileSource {
     // Read from commands (Get latest values)
-    async fn read(&self) -> Result<FanProfile, DaemonError>;
+    fn read(&self) -> impl std::future::Future<Output = Result<FanProfile, DaemonError>> + Send;
     async fn read_profile(&self) -> Result<FanState, DaemonError>;
 
     // Change values of source
-    async fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError>;
+    fn set_profile(&self, profile_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + Send;
 }
 
 // -------------- Default Source ---------------
@@ -54,7 +54,7 @@ impl FanProfileSource for AsusctlFanProfile {
         let profile = get_asusctl_profile()?;
 
         // Update snapshot
-        update_snapshot(FanProfile { profile }).await?;
+        update_snapshot(FanProfile { profile }).await;
 
         Ok(profile)
     }
@@ -99,7 +99,7 @@ impl FanProfileSource for AsusctlFanProfile {
         update_snapshot(FanProfile {
             profile: new_profile_idx.into(),
         })
-        .await?;
+        .await;
 
         Ok(())
     }

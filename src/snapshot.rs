@@ -9,7 +9,6 @@ use crate::{
     battery::Battery,
     bluetooth::Bluetooth,
     brightness::Brightness,
-    error::DaemonError,
     fan_profile::FanProfile,
     monitored::{Monitored, MonitoredUpdate, update_monitored},
     ram::Ram,
@@ -29,61 +28,11 @@ pub struct Snapshot {
 
 static CURRENT_SNAPSHOT: LazyLock<Arc<RwLock<Snapshot>>> = LazyLock::new(|| Arc::new(RwLock::new(Snapshot::default())));
 
-/// # Errors
-/// Returns an error if the current snapshot cannot be read due to `RwLock` Poisoning
 pub async fn current_snapshot() -> Snapshot {
     CURRENT_SNAPSHOT.read().await.clone()
 }
 
-pub async fn update_snapshot<M: Monitored>(new_value: M) -> Result<MonitoredUpdate<M>, DaemonError> {
-    let mut snapshot = CURRENT_SNAPSHOT.write().await; // exclusive access
-    update_monitored(&mut snapshot, new_value) // centralized mutation
+pub async fn update_snapshot<M: Monitored>(new_value: M) -> MonitoredUpdate<M> {
+    let mut snapshot = CURRENT_SNAPSHOT.write().await;
+    update_monitored(&mut snapshot, new_value)
 }
-
-// /// # Errors
-// /// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
-// pub fn set_snapshot_battery(battery: Battery) -> Result<(), DaemonError> {
-//     CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.battery = battery;
-
-//     Ok(())
-// }
-
-// /// # Errors
-// /// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
-// pub fn set_snapshot_bluetooth(bluetooth: Bluetooth) -> Result<(), DaemonError> {
-//     CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.bluetooth = bluetooth;
-
-//     Ok(())
-// }
-
-// /// # Errors
-// /// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
-// pub fn set_snapshot_brightness(brightness: Brightness) -> Result<(), DaemonError> {
-//     CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.brightness = brightness;
-
-//     Ok(())
-// }
-
-// /// # Errors
-// /// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
-// pub fn set_snapshot_fan_profile(fan_profile: FanProfile) -> Result<(), DaemonError> {
-//     CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.fan_profile = fan_profile;
-
-//     Ok(())
-// }
-
-// /// # Errors
-// /// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
-// pub fn set_snapshot_ram(ram: Ram) -> Result<(), DaemonError> {
-//     CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.ram = ram;
-
-//     Ok(())
-// }
-
-// /// # Errors
-// /// Returns an error if the current snapshot can't be written to due to `RwLock` Poisoning
-// pub fn set_snapshot_volume(volume: Volume) -> Result<(), DaemonError> {
-//     CURRENT_SNAPSHOT.write().map_err(|_| DaemonError::RwLockError)?.volume = volume;
-
-//     Ok(())
-// }

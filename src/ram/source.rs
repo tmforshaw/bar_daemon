@@ -10,10 +10,10 @@ use super::Ram;
 
 pub trait RamSource {
     // Read from commands (Get latest values)
-    async fn read(&self) -> Result<Ram, DaemonError>;
-    async fn read_total(&self) -> Result<u64, DaemonError>;
-    async fn read_used(&self) -> Result<u64, DaemonError>;
-    async fn read_percent(&self) -> Result<u32, DaemonError>;
+    fn read(&self) -> impl std::future::Future<Output = Result<Ram, DaemonError>> + Send;
+    fn read_total(&self) -> impl std::future::Future<Output = Result<u64, DaemonError>> + Send;
+    fn read_used(&self) -> impl std::future::Future<Output = Result<u64, DaemonError>> + Send;
+    fn read_percent(&self) -> impl std::future::Future<Output = Result<u32, DaemonError>> + Send;
 }
 
 // -------------- Default Source ---------------
@@ -46,7 +46,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = Ram { total, used, percent };
-        update_snapshot(ram.clone()).await?;
+        update_snapshot(ram.clone()).await;
 
         Ok(ram)
     }
@@ -62,7 +62,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = current_snapshot().await.ram.unwrap_or_default();
-        update_snapshot(Ram { total, ..ram }).await?;
+        update_snapshot(Ram { total, ..ram }).await;
 
         Ok(total)
     }
@@ -78,7 +78,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = current_snapshot().await.ram.unwrap_or_default();
-        update_snapshot(Ram { used, ..ram }).await?;
+        update_snapshot(Ram { used, ..ram }).await;
 
         Ok(used)
     }
@@ -97,7 +97,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = current_snapshot().await.ram.unwrap_or_default();
-        update_snapshot(Ram { percent, ..ram }).await?;
+        update_snapshot(Ram { percent, ..ram }).await;
 
         Ok(percent)
     }

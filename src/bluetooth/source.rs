@@ -8,11 +8,11 @@ use super::Bluetooth;
 
 pub trait BluetoothSource {
     // Read from commands (Get latest values)
-    async fn read(&self) -> Result<Bluetooth, DaemonError>;
-    async fn read_state(&self) -> Result<bool, DaemonError>;
+    fn read(&self) -> impl std::future::Future<Output = Result<Bluetooth, DaemonError>> + Send;
+    fn read_state(&self) -> impl std::future::Future<Output = Result<bool, DaemonError>> + Send;
 
     // Change values of source
-    async fn set_state(&self, state_str: &str) -> Result<(), DaemonError>;
+    fn set_state(&self, state_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + Send;
 }
 
 // -------------- Default Source ---------------
@@ -45,7 +45,7 @@ impl BluetoothSource for BluezBluetooth {
             })?;
 
         // Update current snapshot
-        update_snapshot(bluetooth.clone()).await?;
+        update_snapshot(bluetooth.clone()).await;
 
         Ok(bluetooth)
     }
@@ -80,7 +80,7 @@ impl BluetoothSource for BluezBluetooth {
         command::run("bluetooth", &[state])?;
 
         // Change the value within the snapshot
-        update_snapshot(Bluetooth { state: new_state }).await?;
+        update_snapshot(Bluetooth { state: new_state }).await;
 
         Ok(())
     }

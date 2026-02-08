@@ -7,7 +7,6 @@ mod source;
 mod value;
 
 /// # Errors
-/// Returns an error if the latest `Ram` can't be read due to `RwLock` Poisoning
 /// Returns an error if the latest `Ram` can't be read due to parsing errors
 pub async fn latest() -> Result<Ram, DaemonError> {
     source::latest().await

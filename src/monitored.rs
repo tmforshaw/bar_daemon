@@ -1,21 +1,23 @@
-use crate::{error::DaemonError, snapshot::Snapshot};
+use crate::snapshot::Snapshot;
 
+// TODO
+#[allow(dead_code)]
 pub struct MonitoredUpdate<M: Monitored> {
     old: Option<M>,
     new: M,
 }
 
-pub trait Monitored: Sized + Clone {
+pub trait Monitored: Sized + Clone + Send + 'static {
     fn get(snapshot: &Snapshot) -> Option<Self>;
     fn set(snapshot: &mut Snapshot, new: Self);
 }
 
-pub fn update_monitored<M: Monitored>(snapshot: &mut Snapshot, new: M) -> Result<MonitoredUpdate<M>, DaemonError> {
+pub fn update_monitored<M: Monitored>(snapshot: &mut Snapshot, new: M) -> MonitoredUpdate<M> {
     // Get the old value from the snapshot, then replace with the new value
     let old = M::get(snapshot);
     M::set(snapshot, new.clone());
 
-    Ok(MonitoredUpdate { old, new })
+    MonitoredUpdate { old, new }
 }
 
 /// Generate the `Impl` for `Monitored` using the given `type_name` and `field_name`

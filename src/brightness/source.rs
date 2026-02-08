@@ -15,13 +15,13 @@ pub const KEYBOARD_ID: &str = "asus::kbd_backlight";
 
 pub trait BrightnessSource {
     // Read from commands (Get latest values)
-    async fn read(&self) -> Result<Brightness, DaemonError>;
-    async fn read_monitor(&self) -> Result<u32, DaemonError>;
-    async fn read_keyboard(&self) -> Result<u32, DaemonError>;
+    fn read(&self) -> impl std::future::Future<Output = Result<Brightness, DaemonError>> + Send;
+    fn read_monitor(&self) -> impl std::future::Future<Output = Result<u32, DaemonError>> + Send;
+    fn read_keyboard(&self) -> impl std::future::Future<Output = Result<u32, DaemonError>> + Send;
 
     // Change values of source
-    async fn set_monitor(&self, percent_str: &str) -> Result<(), DaemonError>;
-    async fn set_keyboard(&self, percent_str: &str) -> Result<(), DaemonError>;
+    fn set_monitor(&self, percent_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + Send;
+    fn set_keyboard(&self, percent_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + Send;
 }
 
 // -------------- Default Source ---------------
@@ -50,7 +50,7 @@ impl BrightnessSource for BctlBrightness {
 
         // Update the snapshot
         let brightness = Brightness { monitor, keyboard };
-        update_snapshot(brightness.clone()).await?;
+        update_snapshot(brightness.clone()).await;
 
         Ok(brightness)
     }
@@ -64,7 +64,7 @@ impl BrightnessSource for BctlBrightness {
 
         // Update the snapshot
         let brightness = current_snapshot().await.brightness.unwrap_or_default();
-        update_snapshot(Brightness { monitor, ..brightness }).await?;
+        update_snapshot(Brightness { monitor, ..brightness }).await;
 
         Ok(monitor)
     }
@@ -78,7 +78,7 @@ impl BrightnessSource for BctlBrightness {
 
         // Update the snapshot
         let brightness = current_snapshot().await.brightness.unwrap_or_default();
-        update_snapshot(Brightness { keyboard, ..brightness }).await?;
+        update_snapshot(Brightness { keyboard, ..brightness }).await;
 
         Ok(keyboard)
     }
@@ -102,7 +102,7 @@ impl BrightnessSource for BctlBrightness {
             monitor: new_monitor,
             ..prev_brightness
         })
-        .await?;
+        .await;
 
         Ok(())
     }
@@ -126,7 +126,7 @@ impl BrightnessSource for BctlBrightness {
             keyboard: new_keyboard,
             ..prev_brightness
         })
-        .await?;
+        .await;
 
         Ok(())
     }
