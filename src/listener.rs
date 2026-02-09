@@ -8,7 +8,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    POLLING_RATE,
+    config::get_config,
     daemon::{DaemonMessage, SOCKET_PATH},
     error::DaemonError,
     json::tuples_to_json,
@@ -163,5 +163,5 @@ pub async fn poll_values(clients: Arc<Mutex<HashMap<Uuid, Client>>>, clients_tx:
     }
 
     // Set the polling rate
-    tokio::time::sleep(tokio::time::Duration::from_millis(POLLING_RATE)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(get_config().polling_rate)).await;
 }

@@ -2,7 +2,8 @@ use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT, command,
+    ICON_END, ICON_EXT, NOTIFICATION_ID, command,
+    config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
     impl_monitored,
@@ -133,7 +134,7 @@ pub async fn notify(device_id: &str) -> Result<(), DaemonError> {
             "-i",
             icon.as_str(),
             "-t",
-            format!("{NOTIFICATION_TIMEOUT}").as_str(),
+            get_config().notification_timeout.to_string().as_str(),
             "-h",
             format!("int:value:{percent}").as_str(),
             format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),

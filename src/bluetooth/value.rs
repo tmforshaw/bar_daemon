@@ -2,9 +2,10 @@ use clap::{ArgAction, Subcommand};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ICON_END, ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT,
+    ICON_END, ICON_EXT, NOTIFICATION_ID,
     cli::parse_bool,
     command,
+    config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
     impl_monitored,
@@ -96,7 +97,7 @@ pub async fn notify() -> Result<(), DaemonError> {
             "-i",
             icon.trim().to_string().as_str(),
             "-t",
-            format!("{NOTIFICATION_TIMEOUT}").as_str(),
+            get_config().notification_timeout.to_string().as_str(),
             format!("Bluetooth: {}", if bluetooth.state { "on" } else { "off" }).as_str(),
         ],
     )?;

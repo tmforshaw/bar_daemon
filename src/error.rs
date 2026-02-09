@@ -38,9 +38,15 @@ pub enum DaemonError {
     #[error("Could not convert between int types:\n\t\"{0}\"")]
     IntError(#[from] std::num::TryFromIntError),
 
-    #[error("Mutex couldn't be locked")]
+    #[error("RwLock couldn't be locked")]
     RwLockError,
 
     #[error("Could not convert usize to TupleName")]
     TupleNameError,
+
+    #[error("Could not create path:\n\t\"{0}\"")]
+    PathCreateError(String),
+
+    #[error("Could not read/write to path:\n\t\"{0}\"")]
+    PathRwError(String),
 }

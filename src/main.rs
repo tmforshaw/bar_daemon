@@ -19,6 +19,7 @@ pub mod bluetooth;
 pub mod brightness;
 pub mod cli;
 pub mod command;
+pub mod config;
 pub mod daemon;
 pub mod error;
 pub mod fan_profile;
@@ -36,9 +37,10 @@ pub const ICON_END: &str = "-symbolic";
 pub const ICON_EXT: &str = ""; // ".svg"
 
 pub const NOTIFICATION_ID: u32 = 42069;
-pub const NOTIFICATION_TIMEOUT: u32 = 1000;
 
-pub const POLLING_RATE: u64 = 2000;
+// pub const NOTIFICATION_TIMEOUT: u32 = 1000;
+
+// pub const POLLING_RATE: u64 = 2000;
 
 #[tokio::main]
 async fn main() -> Result<(), DaemonError> {

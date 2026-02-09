@@ -4,9 +4,10 @@ use serde::{Deserialize, Serialize};
 use super::{default_source, latest};
 
 use crate::{
-    ICON_EXT, NOTIFICATION_ID, NOTIFICATION_TIMEOUT,
+    ICON_EXT, NOTIFICATION_ID,
     battery::BatterySource,
     command,
+    config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
     impl_monitored,
@@ -125,7 +126,7 @@ pub async fn notify(prev_percent: u32) -> Result<(), DaemonError> {
                         "-u",
                         "-normal",
                         "-t",
-                        NOTIFICATION_TIMEOUT.to_string().as_str(),
+                        get_config().notification_timeout.to_string().as_str(),
                         "-i",
                         battery.get_icon().as_str(),
                         "-r",
