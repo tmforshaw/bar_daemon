@@ -14,8 +14,8 @@ pub fn init_logging() {
         error!("panic: {info}");
     }));
 
-    // Filter the logs to the specified level
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    // Filter the logs to the specified level (Use TRACE as default)
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("trace"));
 
     // Access the log file and begin to add logs
     let log_file = OpenOptions::new()
