@@ -1,5 +1,5 @@
 # `bar_daemon` -- A Daemon For Status Bars
-A daemon that can be queried for specific values, and set values (With notifications for some), can also run as a listener cwhich will be sent all of the values in JSON format whenever a value is updated (Certain values are polled, e.g battery, ram).
+A daemon that can be queried for specific values, and set values (With notifications for some), can also run as a listener which will be sent all of the values in JSON format whenever a value is updated (Certain values are polled, e.g battery, ram).
 
 Notifies on the change of values, and can be queried for the icon of a particular entry, given its type and value.
 
