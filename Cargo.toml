@@ -1,6 +1,6 @@
 [package]
 name = "bar_daemon"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -17,3 +17,6 @@ uuid = { version = "1.17.0", features = ["v4"] }
 serde_json = "1.0.142"
 futures = "0.3.31"
 toml = "0.9.11"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt", "json", "time", "local-time"] }
+time = { version = "0.3.47", features = ["macros"] }

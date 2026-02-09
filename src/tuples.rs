@@ -1,3 +1,5 @@
+use tracing::instrument;
+
 use crate::{
     battery::{self},
     error::DaemonError,
@@ -8,7 +10,7 @@ use crate::{
 
 pub const TUPLE_NAMES: &[&str] = &["volume", "brightness", "bluetooth", "battery", "ram", "fan_profile"];
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum TupleName {
     Volume = 0,
     Brightness = 1,
@@ -38,6 +40,7 @@ impl TryFrom<usize> for TupleName {
 
 /// # Errors
 /// Returns an error if the specified tuples can't be gotten
+#[instrument]
 pub async fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, String)>, DaemonError> {
     // use latest() for polled values and current_snapshot() for values which don't change without user intervention
     Ok(match tuple_name {
@@ -50,9 +53,12 @@ pub async fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String,
     })
 }
 
+type TupleNameWithTuples = (String, Vec<(String, String)>);
+
 /// # Errors
 /// Returns an error if the requested value could not be parsed
-pub async fn get_all_tuples() -> Result<Vec<(String, Vec<(String, String)>)>, DaemonError> {
+#[instrument]
+pub async fn get_all_tuples() -> Result<Vec<TupleNameWithTuples>, DaemonError> {
     // Validate and convert indices
     let tuple_names = TUPLE_NAMES
         .iter()

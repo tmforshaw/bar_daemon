@@ -1,13 +1,16 @@
+use tracing::{info, instrument};
+
 use crate::snapshot::Snapshot;
 
 // TODO
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct MonitoredUpdate<M: Monitored> {
     old: Option<M>,
     new: M,
 }
 
-pub trait Monitored: Sized + Clone + Send + PartialEq + Eq + 'static {
+pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + 'static {
     fn get(snapshot: &Snapshot) -> Option<Self>;
     fn set(snapshot: &mut Snapshot, new: Self);
     // fn notify(update: MonitoredUpdate<Self>);
@@ -16,6 +19,7 @@ pub trait Monitored: Sized + Clone + Send + PartialEq + Eq + 'static {
 /// # Documentation
 /// Updates the `Monitored` value within the `Snapshot` and returns a `MonitoredUpdate`
 #[must_use]
+#[instrument(skip(snapshot, new))]
 pub fn update_monitored<M: Monitored>(snapshot: &mut Snapshot, new: M) -> MonitoredUpdate<M> {
     // Get the old value from the snapshot, then replace with the new value
     let old = M::get(snapshot);
@@ -25,6 +29,9 @@ pub fn update_monitored<M: Monitored>(snapshot: &mut Snapshot, new: M) -> Monito
 
     // Check that the update changed the data
     if update.old != Some(update.new.clone()) {
+        // Log the update
+        info!("Monitored Value Updated: {update:?}");
+
         // Notify change
     }
 

@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use tracing::instrument;
 
 use crate::{
     battery::{self, BatteryGetCommands},
@@ -152,7 +153,8 @@ pub enum GetCommands {
 /// Returns an error if the command for requested value cannot be spawned
 /// Returns an error if values in the output of the command cannot be parsed
 /// Returns an error if daemon or listener have received an error
-pub async fn match_cli() -> Result<(), DaemonError> {
+#[instrument]
+pub async fn evaluate_cli() -> Result<(), DaemonError> {
     let cli = Cli::parse();
 
     let message_to_send = match cli.commands {

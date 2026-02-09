@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
+use tracing::instrument;
+
 use crate::error::DaemonError;
 
 /// # Errors
 /// Returns an error if the generated hashmap can't be converted into a JSON
+#[instrument]
 pub fn tuples_to_json(tuples: Vec<(String, Vec<(String, String)>)>) -> Result<String, DaemonError> {
     // Convert tuples nested hashmap
     let mut json_map: HashMap<String, HashMap<String, String>> = HashMap::new();

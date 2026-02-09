@@ -12,7 +12,7 @@
 
 // TODO Re-add the soft errors back in so that errors can easily be found
 
-use crate::{cli::match_cli, error::DaemonError};
+use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 
 pub mod battery;
 pub mod bluetooth;
@@ -26,6 +26,7 @@ pub mod fan_profile;
 pub mod json;
 pub mod listener;
 pub mod log_linear;
+pub mod logging;
 pub mod monitored;
 pub mod ram;
 pub mod shutdown;
@@ -38,13 +39,13 @@ pub const ICON_EXT: &str = ""; // ".svg"
 
 pub const NOTIFICATION_ID: u32 = 42069;
 
-// pub const NOTIFICATION_TIMEOUT: u32 = 1000;
-
-// pub const POLLING_RATE: u64 = 2000;
-
 #[tokio::main]
 async fn main() -> Result<(), DaemonError> {
-    match_cli().await?;
+    // Start the logging process
+    init_logging();
+
+    // Evaluate cli commands
+    evaluate_cli().await?;
 
     Ok(())
 }

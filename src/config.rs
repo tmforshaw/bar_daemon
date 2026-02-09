@@ -1,6 +1,7 @@
 use std::{fs, path::Path, sync::LazyLock};
 
 use serde::Deserialize;
+use tracing::instrument;
 
 use crate::error::DaemonError;
 
@@ -29,8 +30,12 @@ impl Default for Config {
     }
 }
 
+static CONFIG: LazyLock<Config> = LazyLock::new(init_config);
+
 // TODO This just panics right now since without CONFIG this daemon can't function
-static CONFIG: LazyLock<Config> = LazyLock::new(|| {
+// TODO Paths in config are relative to $HOME but I could make it possible to be absolute or relative
+#[instrument]
+fn init_config() -> Config {
     // Get the $HOME directory for this user
     let home_os_str =
         std::env::var_os("HOME").unwrap_or_else(|| panic!("{}", DaemonError::PathCreateError(String::from("env $HOME"))));
@@ -59,7 +64,7 @@ static CONFIG: LazyLock<Config> = LazyLock::new(|| {
         .unwrap_or_else(|e| panic!("{}", DaemonError::PathCreateError(e.to_string())));
 
         // Copy the default config from /etc/
-        fs::copy(DEFAULT_CONFIG_PATH, &config_path).unwrap_or_else(|e| panic!("{}", DaemonError::PathRwError(e.to_string())));
+        fs::copy(DEFAULT_CONFIG_PATH, config_path).unwrap_or_else(|e| panic!("{}", DaemonError::PathRwError(e.to_string())));
     }
 
     // Read the config file as a String (Converting Error to DaemonError::PathRwError)
@@ -68,8 +73,31 @@ static CONFIG: LazyLock<Config> = LazyLock::new(|| {
         .unwrap_or_else(|e| panic!("{e}"));
 
     // Convert the text in the config file to a Config struct using TOML
-    toml::from_str(config.as_str()).unwrap_or_else(|e| panic!("{e}"))
-});
+    let mut config: Config = toml::from_str(config.as_str()).unwrap_or_else(|e| panic!("{e}"));
+
+    // Create the log file path from the config
+    let log_path_str = format!("{home}/{}", config.log_file);
+    let log_path = Path::new(log_path_str.as_str());
+
+    // Create the log file parent directories if they don't exist
+    if let Some(parent) = log_path.parent()
+        && !parent.exists()
+    {
+        // Create the log path parent folders
+        fs::create_dir_all(log_path.parent().unwrap_or_else(|| {
+            panic!(
+                "{}",
+                DaemonError::PathCreateError(String::from("Could get parent of `log_path`"))
+            )
+        }))
+        .unwrap_or_else(|e| panic!("{}", DaemonError::PathCreateError(e.to_string())));
+    }
+
+    // Replace the log_file in Config with the absolute path
+    config.log_file = log_path_str;
+
+    config
+}
 
 pub fn get_config() -> Config {
     CONFIG.clone()

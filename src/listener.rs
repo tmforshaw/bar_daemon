@@ -5,6 +5,7 @@ use tokio::{
     net::UnixStream,
     sync::{Mutex, Notify, mpsc},
 };
+use tracing::{error, info, instrument};
 use uuid::Uuid;
 
 use crate::{
@@ -15,6 +16,7 @@ use crate::{
     tuples::{TUPLE_NAMES, TupleName, get_all_tuples, tuple_name_to_tuples},
 };
 
+#[derive(Debug)]
 pub struct Client {
     pub id: Uuid,
     pub stream: UnixStream,
@@ -37,9 +39,10 @@ pub enum ClientMessage {
 /// Returns an error if ``DaemonMessage`` could not be created from bytes
 /// Returns an error if socket cannot be read
 /// Returns an error if socket could not be wrote to
+#[instrument]
 pub async fn listen() -> Result<(), DaemonError> {
     if !Path::new(SOCKET_PATH).exists() {
-        eprintln!("Socket not found. Is the daemon running?");
+        error!("Socket not found. Is the daemon running?");
         return Ok(());
     }
 
@@ -71,6 +74,7 @@ pub type SharedClients = Arc<Mutex<HashMap<Uuid, Client>>>;
 /// Returns an error if ``DaemonMessage`` could not be created from bytes
 /// Returns an error if socket cannot be read
 /// Returns an error if socket could not be wrote to
+#[instrument(skip(clients, clients_rx, notify))]
 pub async fn handle_clients(
     clients: SharedClients,
     clients_rx: &mut mpsc::UnboundedReceiver<ClientMessage>,
@@ -119,7 +123,7 @@ pub async fn handle_clients(
                     // Broadcast to each client
                     for (id, client) in clients.lock().await.iter_mut() {
                         if let Err(e) = client.stream.try_write(json.as_bytes()) {
-                            eprintln!("Write failed for {id}: {e}");
+                            error!("Write failed for {id}: {e}");
                             to_remove.push(*id);
                         }
                     }
@@ -127,23 +131,24 @@ pub async fn handle_clients(
                     // Remove dead clients
                     for id in to_remove {
                         clients.lock().await.remove(&id);
-                        println!("Client {id} removed");
+                        info!("Client {id} removed");
                     }
                 }
             }
             () = notify.notified() => {
-                println!("Client handler received shutdown notification");
+                info!("Client handler received shutdown notification");
                 break;
             }
         }
     }
 
-    println!("Client handler shutdown successfuly");
+    info!("Client handler shutdown successfuly");
 
     Ok(())
 }
 
 // TODO Add a Polled trait to simplify this and make it easier to poll values
+#[instrument]
 pub async fn poll_values(clients: Arc<Mutex<HashMap<Uuid, Client>>>, clients_tx: mpsc::UnboundedSender<ClientMessage>) {
     let clients_empty = clients.lock().await.is_empty();
 
@@ -151,15 +156,15 @@ pub async fn poll_values(clients: Arc<Mutex<HashMap<Uuid, Client>>>, clients_tx:
     if !clients_empty {
         clients_tx
             .send(ClientMessage::UpdateBattery)
-            .unwrap_or_else(|e| eprintln!("{}", Into::<DaemonError>::into(e)));
+            .unwrap_or_else(|e| error!("{}", Into::<DaemonError>::into(e)));
 
         clients_tx
             .send(ClientMessage::UpdateRam)
-            .unwrap_or_else(|e| eprintln!("{}", Into::<DaemonError>::into(e)));
+            .unwrap_or_else(|e| error!("{}", Into::<DaemonError>::into(e)));
 
         clients_tx
             .send(ClientMessage::UpdateFanProfile)
-            .unwrap_or_else(|e| eprintln!("{}", Into::<DaemonError>::into(e)));
+            .unwrap_or_else(|e| error!("{}", Into::<DaemonError>::into(e)));
     }
 
     // Set the polling rate

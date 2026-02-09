@@ -6,6 +6,7 @@ use tokio::{
     net::{UnixListener, UnixStream},
     sync::{Mutex, Notify, mpsc},
 };
+use tracing::{info, instrument, trace};
 use uuid::Uuid;
 
 use crate::{
@@ -63,6 +64,7 @@ pub enum DaemonItem {
 /// Returns an error if ``SOCKET_PATH`` cannot be found
 /// Returns an error if ``UnixListener`` cannot be bound
 /// Returns an error if socket cannot be accepted
+#[instrument]
 pub async fn do_daemon() -> Result<(), DaemonError> {
     // Remove existing socket file
     if Path::new(SOCKET_PATH).exists() {
@@ -100,7 +102,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
             tokio::select! {
                 () = poll_values(clients_clone.clone(), clients_tx_clone.clone()) => {}
                 () = notify_clone.notified() => {
-                    println!("Shutdown notified, cleaning up poll loop");
+                    info!("Shutdown notified, cleaning up poll loop");
                 }
             }
         }
@@ -110,7 +112,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
     loop {
         tokio::select! {
             () = &mut shutdown => {
-                println!("Shutdown signal received, stopping connection accept loop");
+                info!("Shutdown signal received, stopping connection accept loop");
 
                 notify.notify_waiters();
 
@@ -133,7 +135,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
         std::fs::remove_file(SOCKET_PATH)?;
     }
 
-    println!("Daemon shutdown cleanly");
+    info!("Daemon shutdown cleanly");
 
     Ok(())
 }
@@ -143,6 +145,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
 /// Returns an error if ``DaemonMessage`` could not be created from bytes
 /// Returns an error if requested value cannot be found or parsed
 /// Returns an error if socket could not be wrote to
+#[instrument(skip(clients, clients_tx, notify))]
 pub async fn handle_socket(
     mut stream: UnixStream,
     clients: SharedClients,
@@ -226,13 +229,13 @@ pub async fn handle_socket(
                 stream.write_all(&postcard::to_stdvec(&reply)?).await?;
             },
             () = notify.notified() => {
-                println!("Socket handler received shutdown notification");
+                info!("Socket handler received shutdown notification");
                 break;
             }
         }
     }
 
-    println!("Socket handler shutdown successfuly");
+    info!("Socket handler shutdown successfuly");
 
     Ok(())
 }
@@ -241,6 +244,7 @@ pub async fn handle_socket(
 /// Returns an error if ``SOCKET_PATH`` cannot be found
 /// Returns an error if socket cannot be read
 /// Returns an error if socket could not be wrote to
+#[instrument]
 pub async fn send_daemon_messaage(message: DaemonMessage) -> Result<DaemonReply, DaemonError> {
     // Connect to the daemon
     let mut stream = UnixStream::connect(SOCKET_PATH).await?;
@@ -248,12 +252,18 @@ pub async fn send_daemon_messaage(message: DaemonMessage) -> Result<DaemonReply,
     // Write the serialized message to the daemon
     stream.write_all(&postcard::to_stdvec(&message)?).await?;
 
+    trace!("Message sent to daemon: {message:?}");
+
     // Get the response from the daemon
     let mut buf = vec![0u8; BUFFER_SIZE];
     let n = stream.read(&mut buf).await?;
 
+    let reply = postcard::from_bytes(&buf[..n])?;
+
+    trace!("Response from daemon: {reply:?}");
+
     // Serialize reply into DaemonMessage
-    Ok(postcard::from_bytes(&buf[..n])?)
+    Ok(reply)
 }
 
 /// # Errors
