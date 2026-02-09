@@ -26,11 +26,16 @@ macro_rules! impl_monitored {
     ($type_name:ident, $field_name:ident) => {
         impl Monitored for $type_name {
             fn get(snapshot: &Snapshot) -> Option<Self> {
+                // Get the given field
                 snapshot.$field_name.clone()
             }
 
             fn set(snapshot: &mut Snapshot, new: Self) {
+                // Set the given field to the new value
                 snapshot.$field_name = Some(new);
+
+                // Show that this snapshot happened now
+                snapshot.timestamp = std::time::Instant::now();
             }
         }
     };

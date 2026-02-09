@@ -15,7 +15,7 @@ use crate::{
     volume::Volume,
 };
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Snapshot {
     pub battery: Option<Battery>,
     pub bluetooth: Option<Bluetooth>,
@@ -23,7 +23,21 @@ pub struct Snapshot {
     pub fan_profile: Option<FanProfile>,
     pub ram: Option<Ram>,
     pub volume: Option<Volume>,
-    pub timestamp: Option<Instant>,
+    pub timestamp: Instant,
+}
+
+impl Default for Snapshot {
+    fn default() -> Self {
+        Self {
+            battery: None,
+            bluetooth: None,
+            brightness: None,
+            fan_profile: None,
+            ram: None,
+            volume: None,
+            timestamp: Instant::now(),
+        }
+    }
 }
 
 static CURRENT_SNAPSHOT: LazyLock<Arc<RwLock<Snapshot>>> = LazyLock::new(|| Arc::new(RwLock::new(Snapshot::default())));
