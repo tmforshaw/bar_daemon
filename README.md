@@ -44,13 +44,29 @@ bar_daemon set fanprofile profile next
 bar_daemon set fan p prev
 ```
 
-Get All (Responds with an Enum of all the tuples)
+Get All (Responds with an Enum of all the tuples in JSON format)
 ```
 bar_daemon get
 bar_daemon get all
 ```
 
 Use `bar_daemon help` or `bar_daemon <COMMAND> help` to get more info about usage
+
+
+## Config
+By default the config file is located at `.config/bar_daemon/config.toml`, when the program is first run if this file doesn't exist the default config will be copied from /etc/bar_daemon/config.toml
+
+Example Config
+``` toml
+# Timeout for notification (in milliseconds)
+notification_timeout = 1000
+
+# Polling rate for polled values (in milliseconds)
+polling_rate = 2000
+
+# Location of the log file
+log_file = ".cache/bar_daemon/bar_daemon.log"
+```
 
 
 ### Requirements
