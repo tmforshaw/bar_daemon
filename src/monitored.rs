@@ -7,20 +7,33 @@ pub struct MonitoredUpdate<M: Monitored> {
     new: M,
 }
 
-pub trait Monitored: Sized + Clone + Send + 'static {
+pub trait Monitored: Sized + Clone + Send + PartialEq + Eq + 'static {
     fn get(snapshot: &Snapshot) -> Option<Self>;
     fn set(snapshot: &mut Snapshot, new: Self);
+    // fn notify(update: MonitoredUpdate<Self>);
 }
 
+/// # Documentation
+/// Updates the `Monitored` value within the `Snapshot` and returns a `MonitoredUpdate`
+#[must_use]
 pub fn update_monitored<M: Monitored>(snapshot: &mut Snapshot, new: M) -> MonitoredUpdate<M> {
     // Get the old value from the snapshot, then replace with the new value
     let old = M::get(snapshot);
     M::set(snapshot, new.clone());
 
-    MonitoredUpdate { old, new }
+    let update = MonitoredUpdate { old, new };
+
+    // Check that the update changed the data
+    if update.old != Some(update.new.clone()) {
+        // Notify change
+    }
+
+    update
 }
 
+/// # Documentation
 /// Generate the `Impl` for `Monitored` using the given `type_name` and `field_name`
+/// For notifications to work the `file_name` which the `notify()` function is in must be the same as `field_name` for this `type_name`
 #[macro_export]
 macro_rules! impl_monitored {
     ($type_name:ident, $field_name:ident) => {
@@ -37,6 +50,10 @@ macro_rules! impl_monitored {
                 // Show that this snapshot happened now
                 snapshot.timestamp = std::time::Instant::now();
             }
+
+            // fn notify(update: $crate::monitored::MonitoredUpdate<Self>) {
+            //     $crate::$field_name::notify();
+            // }
         }
     };
 }

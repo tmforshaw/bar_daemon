@@ -44,7 +44,7 @@ impl BatterySource for AcpiBattery {
         };
 
         // Update current snapshot
-        update_snapshot(battery.clone()).await;
+        let _update = update_snapshot(battery.clone()).await;
 
         Ok(battery)
     }
@@ -58,7 +58,7 @@ impl BatterySource for AcpiBattery {
 
         // Update current snapshot
         let battery = current_snapshot().await.battery.unwrap_or_default();
-        update_snapshot(Battery { state, ..battery }).await;
+        let _update = update_snapshot(Battery { state, ..battery }).await;
 
         Ok(state)
     }
@@ -72,7 +72,7 @@ impl BatterySource for AcpiBattery {
 
         // Update current snapshot
         let battery = current_snapshot().await.battery.unwrap_or_default();
-        update_snapshot(Battery { percent, ..battery }).await;
+        let _update = update_snapshot(Battery { percent, ..battery }).await;
 
         Ok(percent)
     }
@@ -86,7 +86,7 @@ impl BatterySource for AcpiBattery {
 
         // Update current snapshot
         let battery = current_snapshot().await.battery.unwrap_or_default();
-        update_snapshot(Battery {
+        let _update = update_snapshot(Battery {
             time: time.clone(),
             ..battery
         })

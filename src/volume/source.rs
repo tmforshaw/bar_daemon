@@ -52,7 +52,7 @@ impl VolumeSource for WpctlVolume {
         let volume = Volume { percent, mute };
 
         // Update current snapshot
-        update_snapshot(volume.clone()).await;
+        let _update = update_snapshot(volume.clone()).await;
 
         Ok(volume)
     }
@@ -65,7 +65,7 @@ impl VolumeSource for WpctlVolume {
 
         // Update current snapshot
         let volume = current_snapshot().await.volume.unwrap_or_default();
-        update_snapshot(Volume { percent, ..volume }).await;
+        let _update = update_snapshot(Volume { percent, ..volume }).await;
 
         Ok(percent)
     }
@@ -78,7 +78,7 @@ impl VolumeSource for WpctlVolume {
 
         // Update current snapshot
         let volume = current_snapshot().await.volume.unwrap_or_default();
-        update_snapshot(Volume { mute, ..volume }).await;
+        let _update = update_snapshot(Volume { mute, ..volume }).await;
 
         Ok(mute)
     }
@@ -118,7 +118,7 @@ impl VolumeSource for WpctlVolume {
         };
 
         // Update the volume in the snapshot
-        update_snapshot(Volume {
+        let _update = update_snapshot(Volume {
             percent: linear_percent,
             ..current_volume
         })
@@ -156,7 +156,7 @@ impl VolumeSource for WpctlVolume {
         let _ = command::run("wpctl", &["set-mute", "@DEFAULT_SINK@", mute.as_str()])?;
 
         // Update the volume in the snapshot
-        update_snapshot(Volume {
+        let _update = update_snapshot(Volume {
             mute: new_mute,
             ..current_volume
         })

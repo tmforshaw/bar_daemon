@@ -46,7 +46,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = Ram { total, used, percent };
-        update_snapshot(ram.clone()).await;
+        let _update = update_snapshot(ram.clone()).await;
 
         Ok(ram)
     }
@@ -62,7 +62,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = current_snapshot().await.ram.unwrap_or_default();
-        update_snapshot(Ram { total, ..ram }).await;
+        let _update = update_snapshot(Ram { total, ..ram }).await;
 
         Ok(total)
     }
@@ -78,7 +78,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = current_snapshot().await.ram.unwrap_or_default();
-        update_snapshot(Ram { used, ..ram }).await;
+        let _update = update_snapshot(Ram { used, ..ram }).await;
 
         Ok(used)
     }
@@ -97,7 +97,7 @@ impl RamSource for ProcpsRam {
 
         // Update snapshot
         let ram = current_snapshot().await.ram.unwrap_or_default();
-        update_snapshot(Ram { percent, ..ram }).await;
+        let _update = update_snapshot(Ram { percent, ..ram }).await;
 
         Ok(percent)
     }

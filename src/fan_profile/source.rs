@@ -54,7 +54,7 @@ impl FanProfileSource for AsusctlFanProfile {
         let profile = get_asusctl_profile()?;
 
         // Update snapshot
-        update_snapshot(FanProfile { profile }).await;
+        let _update = update_snapshot(FanProfile { profile }).await;
 
         Ok(profile)
     }
@@ -96,7 +96,7 @@ impl FanProfileSource for AsusctlFanProfile {
         command::run("asusctl", &["profile", "set", new_profile])?;
 
         // Update snapshot
-        update_snapshot(FanProfile {
+        let _update = update_snapshot(FanProfile {
             profile: new_profile_idx.into(),
         })
         .await;

@@ -45,7 +45,7 @@ impl BluetoothSource for BluezBluetooth {
             })?;
 
         // Update current snapshot
-        update_snapshot(bluetooth.clone()).await;
+        let _update = update_snapshot(bluetooth.clone()).await;
 
         Ok(bluetooth)
     }
@@ -80,7 +80,7 @@ impl BluetoothSource for BluezBluetooth {
         command::run("bluetooth", &[state])?;
 
         // Change the value within the snapshot
-        update_snapshot(Bluetooth { state: new_state }).await;
+        let _update = update_snapshot(Bluetooth { state: new_state }).await;
 
         Ok(())
     }

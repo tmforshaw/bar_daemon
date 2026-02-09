@@ -20,6 +20,7 @@ pub struct Client {
     pub stream: UnixStream,
 }
 
+// TODO Replace this with the Snapshot MonitoredUpdate to ensure that updates are only sent when necessary
 pub enum ClientMessage {
     UpdateVolume,
     UpdateBrightness,
@@ -142,6 +143,7 @@ pub async fn handle_clients(
     Ok(())
 }
 
+// TODO Add a Polled trait to simplify this and make it easier to poll values
 pub async fn poll_values(clients: Arc<Mutex<HashMap<Uuid, Client>>>, clients_tx: mpsc::UnboundedSender<ClientMessage>) {
     let clients_empty = clients.lock().await.is_empty();
 
@@ -153,6 +155,10 @@ pub async fn poll_values(clients: Arc<Mutex<HashMap<Uuid, Client>>>, clients_tx:
 
         clients_tx
             .send(ClientMessage::UpdateRam)
+            .unwrap_or_else(|e| eprintln!("{}", Into::<DaemonError>::into(e)));
+
+        clients_tx
+            .send(ClientMessage::UpdateFanProfile)
             .unwrap_or_else(|e| eprintln!("{}", Into::<DaemonError>::into(e)));
     }
 

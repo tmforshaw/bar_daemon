@@ -50,7 +50,7 @@ impl BrightnessSource for BctlBrightness {
 
         // Update the snapshot
         let brightness = Brightness { monitor, keyboard };
-        update_snapshot(brightness.clone()).await;
+        let _update = update_snapshot(brightness.clone()).await;
 
         Ok(brightness)
     }
@@ -64,7 +64,7 @@ impl BrightnessSource for BctlBrightness {
 
         // Update the snapshot
         let brightness = current_snapshot().await.brightness.unwrap_or_default();
-        update_snapshot(Brightness { monitor, ..brightness }).await;
+        let _update = update_snapshot(Brightness { monitor, ..brightness }).await;
 
         Ok(monitor)
     }
@@ -78,7 +78,7 @@ impl BrightnessSource for BctlBrightness {
 
         // Update the snapshot
         let brightness = current_snapshot().await.brightness.unwrap_or_default();
-        update_snapshot(Brightness { keyboard, ..brightness }).await;
+        let _update = update_snapshot(Brightness { keyboard, ..brightness }).await;
 
         Ok(keyboard)
     }
@@ -98,7 +98,7 @@ impl BrightnessSource for BctlBrightness {
         }
 
         // Update snapshot
-        update_snapshot(Brightness {
+        let _update = update_snapshot(Brightness {
             monitor: new_monitor,
             ..prev_brightness
         })
@@ -122,7 +122,7 @@ impl BrightnessSource for BctlBrightness {
         }
 
         // Update snapshot
-        update_snapshot(Brightness {
+        let _update = update_snapshot(Brightness {
             keyboard: new_keyboard,
             ..prev_brightness
         })
