@@ -1,4 +1,4 @@
-use tracing::instrument;
+use tracing::{error, instrument};
 
 use crate::{
     battery::{self},
@@ -44,6 +44,17 @@ impl TryFrom<usize> for TupleName {
 /// Returns an error if the specified tuples can't be gotten
 #[instrument]
 pub async fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String, String)>, DaemonError> {
+    match tuple_name_to_tuples_inner(tuple_name).await {
+        Ok(name_and_tuples) => Ok(name_and_tuples),
+        Err(e) => {
+            error!("{e}");
+            Err(e)
+        }
+    }
+}
+
+// An inner function which makes it so that any errors in this code can be logged as being part of tuple_name_to_tuples
+async fn tuple_name_to_tuples_inner(tuple_name: &TupleName) -> Result<Vec<(String, String)>, DaemonError> {
     // use latest() for polled values and current_snapshot() for values which don't change without user intervention (Use latest if the current_snapshot() values are None)
     Ok(match tuple_name {
         TupleName::Volume => current_snapshot().await.volume.unwrap_or(volume::latest().await?).to_tuples(),
@@ -69,6 +80,16 @@ type TupleNameWithTuples = (String, Vec<(String, String)>);
 /// Returns an error if the requested value could not be parsed
 #[instrument]
 pub async fn get_all_tuples() -> Result<Vec<TupleNameWithTuples>, DaemonError> {
+    match get_all_tuples_inner().await {
+        Ok(tuples) => Ok(tuples),
+        Err(e) => {
+            error!("{e}");
+            Err(e)
+        }
+    }
+}
+
+async fn get_all_tuples_inner() -> Result<Vec<TupleNameWithTuples>, DaemonError> {
     // Validate and convert indices
     let tuple_names = TUPLE_NAMES
         .iter()
