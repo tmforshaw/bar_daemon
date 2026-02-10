@@ -14,13 +14,11 @@ mod value;
 /// # Errors
 /// Returns an error if the latest `Bluetooth` can't be read due to parsing errors
 pub async fn latest() -> Result<Bluetooth, DaemonError> {
-    let latest = source::latest().await;
-
-    if let Err(e) = latest {
-        error!("{e}");
-
-        Err(e)
-    } else {
-        latest
+    match source::latest().await {
+        Ok(latest) => Ok(latest),
+        Err(e) => {
+            error!("{e}");
+            Err(e)
+        }
     }
 }

@@ -41,6 +41,16 @@ pub enum ClientMessage {
 /// Returns an error if socket could not be wrote to
 #[instrument]
 pub async fn listen() -> Result<(), DaemonError> {
+    match listen_inner().await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            error!("{e}");
+            Err(e)
+        }
+    }
+}
+
+async fn listen_inner() -> Result<(), DaemonError> {
     if !Path::new(SOCKET_PATH).exists() {
         error!("Socket not found ('{SOCKET_PATH}'). Is the daemon running?");
         return Err(DaemonError::PathRwError(SOCKET_PATH.to_string()));
