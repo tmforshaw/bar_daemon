@@ -1,10 +1,24 @@
-# `bar_daemon` -- A Daemon For Status Bars
+# `bar_daemon` — A Daemon For Status Bars
 A daemon that can be queried for specific values, and set values (With notifications for some), can also run as a listener which will be sent all of the values in JSON format whenever a value is updated (Certain values are polled, e.g battery, ram).
 
 Notifies on the change of values, and can be queried for the icon of a particular entry, given its type and value.
 
 Intended for use with a status bar, reduces the amount of values which need to be polled for.
 
+---
+<br/>
+
+<div align="center">
+  
+[bar_daemon](https://aur.archlinux.org/packages/bar_daemon) is available on the Arch User Repository.
+
+It can be installed via `paru -S bar_daemon`, or any other AUR package installation service.
+
+[![AUR version](https://img.shields.io/aur/version/bar_daemon)](https://aur.archlinux.org/packages/bar_daemon)
+[![AUR votes](https://img.shields.io/aur/votes/bar_daemon)](https://aur.archlinux.org/packages/bar_daemon)
+</div>
+
+<br/>
 
 ## Usage
 Listen for changes/polled values
@@ -52,6 +66,7 @@ bar_daemon get all
 
 Use `bar_daemon help` or `bar_daemon <COMMAND> help` to get more info about usage
 
+<br/>
 
 ## Config
 By default the config file is located at `.config/bar_daemon/config.toml`, when the program is first run if this file doesn't exist the default config will be copied from /etc/bar_daemon/config.toml
@@ -68,8 +83,9 @@ polling_rate = 2000
 log_file = ".cache/bar_daemon/bar_daemon.log"
 ```
 
+<br/>
 
-### Requirements
+## Requirements
 
 * `wpctl` (Pipewire) for volume control
 * `brightnessctl` for keyboard and monitor brightness control (Devices are set manually in the code)
