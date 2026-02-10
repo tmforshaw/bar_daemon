@@ -1,4 +1,4 @@
-use tracing::{instrument, trace};
+use tracing::instrument;
 
 use crate::{
     battery::{self},
