@@ -42,9 +42,8 @@ pub enum ClientMessage {
 #[instrument]
 pub async fn listen() -> Result<(), DaemonError> {
     if !Path::new(SOCKET_PATH).exists() {
-        error!("Socket not found. Is the daemon running?");
-        // TODO This should return and Err
-        return Ok(());
+        error!("Socket not found ('{SOCKET_PATH}'). Is the daemon running?");
+        return Err(DaemonError::PathRwError(SOCKET_PATH.to_string()));
     }
 
     let mut stream = UnixStream::connect(SOCKET_PATH).await?;

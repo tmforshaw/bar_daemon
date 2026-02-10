@@ -76,8 +76,6 @@ pub async fn get_all_tuples() -> Result<Vec<TupleNameWithTuples>, DaemonError> {
         .map(|(i, _)| TupleName::try_from(i))
         .collect::<Result<Vec<_>, DaemonError>>()?;
 
-    trace!("All TupleNames collected");
-
     // Convert names to their respective tuples (create async future for this)
     let futures = tuple_names.iter().zip(TUPLE_NAMES.iter()).map(|(tuple_name, &name)| {
         let name = name.to_string();
@@ -89,12 +87,6 @@ pub async fn get_all_tuples() -> Result<Vec<TupleNameWithTuples>, DaemonError> {
         }
     });
 
-    trace!("All TupleNames joined with their tuple in a future");
-
     // Execute the futures concurrently to get the tuples
-    let tuples = futures::future::try_join_all(futures).await?;
-
-    trace!("All TupleNames joined with their tuple and awaited");
-
-    Ok(tuples)
+    futures::future::try_join_all(futures).await
 }
