@@ -2,8 +2,6 @@ use tracing::{info, instrument};
 
 use crate::snapshot::Snapshot;
 
-// TODO
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct MonitoredUpdate<M: Monitored> {
     old: Option<M>,
@@ -14,6 +12,14 @@ pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + '
     fn get(snapshot: &Snapshot) -> Option<Self>;
     fn set(snapshot: &mut Snapshot, new: Self);
     // fn notify(update: MonitoredUpdate<Self>);
+
+    // /// # Documentation
+    // /// Use this when the value shouldn't be set to default and an error should be returned instead
+    // /// # Errors
+    // /// Gives the `DaemonError` for finding an empty `Monitored` value in `Snapshot`
+    // fn couldnt_find_monitored() -> Result<Self, DaemonError> {
+    //     Err(DaemonError::MonitoredEmptyError(std::any::type_name::<Self>()))
+    // }
 }
 
 /// # Documentation

@@ -1,5 +1,6 @@
 use clap::{ArgAction, Subcommand};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 use crate::{
     ICON_END, ICON_EXT, NOTIFICATION_ID,
@@ -63,6 +64,7 @@ impl Bluetooth {
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     #[must_use]
+    #[instrument]
     pub fn to_tuples(&self) -> Vec<(String, String)> {
         // Create list of values for tuples
         let str_values = {
@@ -82,8 +84,9 @@ impl Bluetooth {
 /// # Errors
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
+#[instrument]
 pub async fn notify() -> Result<(), DaemonError> {
-    let bluetooth = current_snapshot().await.bluetooth.unwrap_or_default();
+    let bluetooth = current_snapshot().await.bluetooth.unwrap_or(latest().await?);
 
     let icon = bluetooth.get_icon();
 
@@ -106,13 +109,14 @@ pub async fn notify() -> Result<(), DaemonError> {
 }
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
+#[instrument]
 pub async fn evaluate_item(
     item: DaemonItem,
     bluetooth_item: &BluetoothItem,
     value: Option<String>,
 ) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
-        let prev_state = current_snapshot().await.bluetooth.unwrap_or_default();
+        let prev_state = current_snapshot().await.bluetooth.unwrap_or(latest().await?);
 
         // Set value
         if bluetooth_item == &BluetoothItem::State {
@@ -132,16 +136,26 @@ pub async fn evaluate_item(
         match bluetooth_item {
             BluetoothItem::State => DaemonReply::Value {
                 item,
-                value: default_source().read_state().await?.to_string(),
+                value: match current_snapshot().await.bluetooth {
+                    Some(bluetooth) => Ok(bluetooth.state),
+                    None => default_source().read_state().await,
+                }?
+                .to_string(),
             },
-            BluetoothItem::Icon => DaemonReply::Value {
-                item,
-                value: latest().await?.get_icon(),
-            },
-            BluetoothItem::All => DaemonReply::Tuples {
-                item,
-                tuples: latest().await?.to_tuples(),
-            },
+            BluetoothItem::Icon | BluetoothItem::All => {
+                let bluetooth = latest().await?;
+
+                match bluetooth_item {
+                    BluetoothItem::Icon => DaemonReply::Value {
+                        item,
+                        value: bluetooth.get_icon(),
+                    },
+                    _ => DaemonReply::Tuples {
+                        item,
+                        tuples: bluetooth.to_tuples(),
+                    },
+                }
+            }
         }
     })
 }

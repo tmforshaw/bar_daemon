@@ -1,5 +1,6 @@
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 use crate::{
     ICON_END, ICON_EXT,
@@ -7,7 +8,7 @@ use crate::{
     error::DaemonError,
     impl_monitored,
     monitored::Monitored,
-    snapshot::Snapshot,
+    snapshot::{Snapshot, current_snapshot},
 };
 
 use super::{RamSource, default_source, latest};
@@ -52,6 +53,7 @@ impl Ram {
     /// Errors are turned into `String` and set as value of `total` then returned as an `Ok()`
     /// Returns an error if the requested value could not be parsed
     #[must_use]
+    #[instrument]
     pub fn to_tuples(&self) -> Vec<(String, String)> {
         let icon = Self::get_icon();
 
@@ -82,21 +84,34 @@ impl Ram {
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
+#[instrument]
 pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<DaemonReply, DaemonError> {
     Ok(
         // Get value
         match ram_item {
             RamItem::Total => DaemonReply::Value {
                 item,
-                value: default_source().read_total().await?.to_string(),
+                value: match current_snapshot().await.ram {
+                    Some(ram) => Ok(ram.total),
+                    None => default_source().read_total().await,
+                }?
+                .to_string(),
             },
             RamItem::Used => DaemonReply::Value {
                 item,
-                value: default_source().read_used().await?.to_string(),
+                value: match current_snapshot().await.ram {
+                    Some(ram) => Ok(ram.used),
+                    None => default_source().read_used().await,
+                }?
+                .to_string(),
             },
             RamItem::Percent => DaemonReply::Value {
                 item,
-                value: default_source().read_percent().await?.to_string(),
+                value: match current_snapshot().await.ram {
+                    Some(ram) => Ok(ram.percent),
+                    None => default_source().read_percent().await,
+                }?
+                .to_string(),
             },
             RamItem::Icon => DaemonReply::Value {
                 item,
@@ -104,7 +119,7 @@ pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<Daemo
             },
             RamItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest().await?.to_tuples(),
+                tuples: current_snapshot().await.ram.unwrap_or(latest().await?).to_tuples(),
             },
         },
     )

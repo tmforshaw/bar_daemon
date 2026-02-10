@@ -11,7 +11,6 @@
 #![allow(clippy::implicit_hasher)]
 
 // TODO Re-add the soft errors back in so that errors can easily be found
-// TODO Remove bug where the snapshot values are zero so initial volume and brightness are zero
 
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 

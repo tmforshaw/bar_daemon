@@ -1,3 +1,5 @@
+use tracing::instrument;
+
 use crate::{
     command,
     error::DaemonError,
@@ -28,9 +30,11 @@ pub async fn latest() -> Result<Bluetooth, DaemonError> {
 
 // ---------------- Bluez Source ---------------
 
+#[derive(Debug)]
 pub struct BluezBluetooth;
 
 impl BluetoothSource for BluezBluetooth {
+    #[instrument]
     async fn read(&self) -> Result<Bluetooth, DaemonError> {
         // Get output for bluetooth command (From Bluez)
         let output = command::run("bluetooth", &[])?;
@@ -50,17 +54,19 @@ impl BluetoothSource for BluezBluetooth {
         Ok(bluetooth)
     }
 
+    #[instrument]
     async fn read_state(&self) -> Result<bool, DaemonError> {
         self.read().await.map(|bluetooth| bluetooth.state)
     }
 
+    #[instrument]
     async fn set_state(&self, state_str: &str) -> Result<(), DaemonError> {
         let new_state;
 
         // Allow toggling of the bluetooth state
         let state = match state_str {
             "toggle" => {
-                new_state = !current_snapshot().await.bluetooth.unwrap_or_default().state;
+                new_state = !current_snapshot().await.bluetooth.unwrap_or(latest().await?).state;
 
                 "toggle"
             }

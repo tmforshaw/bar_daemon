@@ -14,6 +14,7 @@ use super::{VolumeSource, default_source, latest};
 
 use clap::{ArgAction, Subcommand};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 #[derive(Subcommand)]
 pub enum VolumeGetCommands {
@@ -96,6 +97,7 @@ impl Volume {
     /// Errors are turned into `String` and set as value of `percent` then returned as an `Ok()`
     /// Returns an error if values in the output of the command cannot be parsed
     #[must_use]
+    #[instrument]
     pub fn to_tuples(&self) -> Vec<(String, String)> {
         // Create list of values for tuples
         let str_values = {
@@ -116,9 +118,10 @@ impl Volume {
 /// # Errors
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
+#[instrument]
 pub async fn notify() -> Result<(), DaemonError> {
     // Get the current volume from the state
-    let volume = current_snapshot().await.volume.unwrap_or_default();
+    let volume = current_snapshot().await.volume.unwrap_or(latest().await?);
 
     let percent = volume.percent;
     let icon = volume.get_icon();
@@ -145,6 +148,7 @@ pub async fn notify() -> Result<(), DaemonError> {
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
+#[instrument]
 pub async fn evaluate_item(
     item: DaemonItem,
     volume_item: &VolumeItem,
@@ -152,7 +156,7 @@ pub async fn evaluate_item(
 ) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
         // Get the current volume before the change
-        let prev_volume_obj = current_snapshot().await.volume.unwrap_or_default();
+        let prev_volume_obj = current_snapshot().await.volume.unwrap_or(latest().await?);
 
         // Set value
         match volume_item {
@@ -170,25 +174,38 @@ pub async fn evaluate_item(
 
         DaemonReply::Value { item, value }
     } else {
-        let volume = current_snapshot().await.volume.unwrap_or_default();
-        // Get value (use current_snapshot since this won't change without bar_daemon changing it)
+        // Get value (use current_snapshot since this won't change without bar_daemon changing it) (Use latest when current_snapshot is empty)
         match volume_item {
             VolumeItem::Percent => DaemonReply::Value {
                 item,
-                value: volume.percent.to_string(),
+                value: match current_snapshot().await.volume {
+                    Some(volume) => Ok(volume.percent),
+                    None => default_source().read_percent().await,
+                }?
+                .to_string(),
             },
             VolumeItem::Mute => DaemonReply::Value {
                 item,
-                value: volume.mute.to_string(),
+                value: match current_snapshot().await.volume {
+                    Some(volume) => Ok(volume.mute),
+                    None => default_source().read_mute().await,
+                }?
+                .to_string(),
             },
-            VolumeItem::Icon => DaemonReply::Value {
-                item,
-                value: volume.get_icon(),
-            },
-            VolumeItem::All => DaemonReply::Tuples {
-                item,
-                tuples: volume.to_tuples(),
-            },
+            VolumeItem::Icon | VolumeItem::All => {
+                let volume = current_snapshot().await.volume.unwrap_or(latest().await?);
+
+                match volume_item {
+                    VolumeItem::Icon => DaemonReply::Value {
+                        item,
+                        value: volume.get_icon(),
+                    },
+                    _ => DaemonReply::Tuples {
+                        item,
+                        tuples: volume.to_tuples(),
+                    },
+                }
+            }
         }
     })
 }

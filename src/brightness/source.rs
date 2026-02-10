@@ -1,6 +1,7 @@
 use std::str::Split;
 
 use itertools::Itertools;
+use tracing::instrument;
 
 use crate::{
     command,
@@ -37,12 +38,14 @@ pub async fn latest() -> Result<Brightness, DaemonError> {
 
 // ---------------- Bctl Source ----------------
 
+#[derive(Debug)]
 pub struct BctlBrightness;
 
 impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn read(&self) -> Result<Brightness, DaemonError> {
         // Get the brightness via brightnessctl
         let monitor = read_bctl_device(MONITOR_ID)?;
@@ -58,12 +61,17 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn read_monitor(&self) -> Result<u32, DaemonError> {
         // Get the brightness via brightnessctl
         let monitor = read_bctl_device(MONITOR_ID)?;
 
         // Update the snapshot
-        let brightness = current_snapshot().await.brightness.unwrap_or_default();
+        let brightness = current_snapshot()
+            .await
+            .brightness
+            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
+            .unwrap_or_default();
         let _update = update_snapshot(Brightness { monitor, ..brightness }).await;
 
         Ok(monitor)
@@ -72,12 +80,17 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn read_keyboard(&self) -> Result<u32, DaemonError> {
         // Get the brightness via brightnessctl
         let keyboard = read_bctl_device(KEYBOARD_ID)?;
 
         // Update the snapshot
-        let brightness = current_snapshot().await.brightness.unwrap_or_default();
+        let brightness = current_snapshot()
+            .await
+            .brightness
+            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
+            .unwrap_or_default();
         let _update = update_snapshot(Brightness { keyboard, ..brightness }).await;
 
         Ok(keyboard)
@@ -86,8 +99,9 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn set_monitor(&self, percent_str: &str) -> Result<(), DaemonError> {
-        let prev_brightness = current_snapshot().await.brightness.unwrap_or_default();
+        let prev_brightness = current_snapshot().await.brightness.unwrap_or(latest().await?);
 
         set_bctl_device(MONITOR_ID, percent_str).await?;
 
@@ -110,8 +124,9 @@ impl BrightnessSource for BctlBrightness {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn set_keyboard(&self, percent_str: &str) -> Result<(), DaemonError> {
-        let prev_brightness = current_snapshot().await.brightness.unwrap_or_default();
+        let prev_brightness = current_snapshot().await.brightness.unwrap_or(latest().await?);
 
         set_bctl_device(KEYBOARD_ID, percent_str).await?;
 
@@ -142,10 +157,11 @@ fn get_bctl_split(output: &str) -> Split<'_, char> {
     output.split(',')
 }
 
+#[instrument(skip(split))]
 fn get_bctl_percentage_from_split(mut split: Split<'_, char>) -> Result<u32, DaemonError> {
     // Get the current and maximum brightness values
     let current_brightness = split.nth(2);
-    let max_brightness = split.nth(2);
+    let max_brightness = split.nth(1);
 
     // Parse the values into integers, then get the floating point percentage
     Ok(
@@ -163,6 +179,7 @@ fn get_bctl_percentage_from_split(mut split: Split<'_, char>) -> Result<u32, Dae
 /// # Errors
 /// Returns an error if the command cannot be spawned
 /// Returns an error if values in the output of the command cannot be parsed
+#[instrument]
 fn read_bctl_device(device_id: &str) -> Result<u32, DaemonError> {
     let output = get_bctl_output(device_id)?;
     let output_split = get_bctl_split(&output);
@@ -170,10 +187,11 @@ fn read_bctl_device(device_id: &str) -> Result<u32, DaemonError> {
     get_bctl_percentage_from_split(output_split)
 }
 
+#[instrument]
 async fn set_bctl_device(device_id: &str, percent_str: &str) -> Result<(), DaemonError> {
     // Change the percentage based on the delta percentage
     let percent = if percent_str.starts_with('+') || percent_str.starts_with('-') {
-        let current_brightness = current_snapshot().await.brightness.unwrap_or_default();
+        let current_brightness = current_snapshot().await.brightness.unwrap_or(latest().await?);
 
         let delta_percent = percent_str.parse::<f64>()?;
 

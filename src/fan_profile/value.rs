@@ -1,11 +1,13 @@
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 use crate::{
     ICON_END, ICON_EXT, NOTIFICATION_ID, command,
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
+    fan_profile::latest,
     impl_monitored,
     monitored::Monitored,
     snapshot::{Snapshot, current_snapshot},
@@ -78,6 +80,7 @@ impl FanProfile {
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     #[must_use]
+    #[instrument]
     pub fn to_tuples(&self) -> Vec<(String, String)> {
         let str_values = {
             let Self { profile } = self.clone();
@@ -97,8 +100,9 @@ impl FanProfile {
 
 /// # Errors
 /// Returns an error if the requested value could not be parsed
+#[instrument]
 pub async fn notify() -> Result<(), DaemonError> {
-    let profile = current_snapshot().await.fan_profile.unwrap_or_default().profile;
+    let profile = current_snapshot().await.fan_profile.unwrap_or(latest().await?).profile;
     let icon = FanProfile::get_icon();
 
     command::run(
@@ -121,13 +125,14 @@ pub async fn notify() -> Result<(), DaemonError> {
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
+#[instrument]
 pub async fn evaluate_item(
     item: DaemonItem,
     fan_profile_item: &FanProfileItem,
     value: Option<String>,
 ) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
-        let prev_fan_profile = current_snapshot().await.fan_profile.unwrap_or_default();
+        let prev_fan_profile = current_snapshot().await.fan_profile.unwrap_or(latest().await?);
 
         // Set value
         if matches!(fan_profile_item, FanProfileItem::Profile) {
@@ -150,7 +155,7 @@ pub async fn evaluate_item(
         DaemonReply::Value { item, value }
     } else {
         // Get value
-        let fan_profile = current_snapshot().await.fan_profile.unwrap_or_default();
+        let fan_profile = current_snapshot().await.fan_profile.unwrap_or(latest().await?);
 
         match fan_profile_item {
             FanProfileItem::Profile => DaemonReply::Value {

@@ -1,6 +1,7 @@
 use std::str::SplitWhitespace;
 
 use itertools::Itertools;
+use tracing::instrument;
 
 use super::Volume;
 use crate::{
@@ -10,13 +11,11 @@ use crate::{
     snapshot::{current_snapshot, update_snapshot},
 };
 
-// TODO
-#[allow(dead_code)]
 pub trait VolumeSource {
     // Read from commands (Get latest values)
     fn read(&self) -> impl std::future::Future<Output = Result<Volume, DaemonError>> + std::marker::Send;
-    async fn read_percent(&self) -> Result<u32, DaemonError>;
-    async fn read_mute(&self) -> Result<bool, DaemonError>;
+    fn read_percent(&self) -> impl std::future::Future<Output = Result<u32, DaemonError>> + std::marker::Send;
+    fn read_mute(&self) -> impl std::future::Future<Output = Result<bool, DaemonError>> + std::marker::Send;
 
     // Change values of source
     fn set_percent(&self, percent_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + std::marker::Send;
@@ -36,11 +35,13 @@ pub async fn latest() -> Result<Volume, DaemonError> {
 
 // ---------------- Wpctl Source ---------------
 
+#[derive(Debug)]
 pub struct WpctlVolume;
 
 impl VolumeSource for WpctlVolume {
     // Read from commands
 
+    #[instrument]
     async fn read(&self) -> Result<Volume, DaemonError> {
         let output = get_wpctl_output()?;
         let output_split = get_wpctl_split(&output);
@@ -57,6 +58,7 @@ impl VolumeSource for WpctlVolume {
         Ok(volume)
     }
 
+    #[instrument]
     async fn read_percent(&self) -> Result<u32, DaemonError> {
         let output = get_wpctl_output()?;
         let output_split = get_wpctl_split(&output);
@@ -64,12 +66,17 @@ impl VolumeSource for WpctlVolume {
         let percent = get_linear_percent_from_wpctl_split(output_split.clone())?;
 
         // Update current snapshot
-        let volume = current_snapshot().await.volume.unwrap_or_default();
+        let volume = current_snapshot()
+            .await
+            .volume
+            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
+            .unwrap_or_default();
         let _update = update_snapshot(Volume { percent, ..volume }).await;
 
         Ok(percent)
     }
 
+    #[instrument]
     async fn read_mute(&self) -> Result<bool, DaemonError> {
         let output = get_wpctl_output()?;
         let output_split = get_wpctl_split(&output);
@@ -77,7 +84,11 @@ impl VolumeSource for WpctlVolume {
         let mute = get_mute_from_wpctl_split(output_split.clone());
 
         // Update current snapshot
-        let volume = current_snapshot().await.volume.unwrap_or_default();
+        let volume = current_snapshot()
+            .await
+            .volume
+            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
+            .unwrap_or_default();
         let _update = update_snapshot(Volume { mute, ..volume }).await;
 
         Ok(mute)
@@ -88,11 +99,12 @@ impl VolumeSource for WpctlVolume {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn set_percent(&self, percent_str: &str) -> Result<(), DaemonError> {
         // Get the current snapshot values
         let snapshot = current_snapshot().await;
 
-        let current_volume = snapshot.volume.unwrap_or_default();
+        let current_volume = snapshot.volume.unwrap_or(latest().await?);
 
         // If the percentage is a change, figure out the true percentage
         let linear_percent = if percent_str.starts_with('+') || percent_str.starts_with('-') {
@@ -136,8 +148,9 @@ impl VolumeSource for WpctlVolume {
         Ok(())
     }
 
+    #[instrument]
     async fn set_mute(&self, mute_str: &str) -> Result<(), DaemonError> {
-        let current_volume = current_snapshot().await.volume.unwrap_or_default();
+        let current_volume = current_snapshot().await.volume.unwrap_or(latest().await?);
 
         let new_mute;
 
@@ -181,6 +194,7 @@ fn get_mute_from_wpctl_split(mut split: SplitWhitespace) -> bool {
     split.nth(1).is_some()
 }
 
+#[instrument(skip(split))]
 fn get_linear_percent_from_wpctl_split(mut split: SplitWhitespace) -> Result<u32, DaemonError> {
     // Take the first part of the split (The numerical part) then convert to linear percentage
     if let Some(volume_str) = split.next() {

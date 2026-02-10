@@ -1,5 +1,6 @@
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 use super::{default_source, latest};
 
@@ -80,6 +81,7 @@ impl Battery {
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     #[must_use]
+    #[instrument]
     pub fn to_tuples(&self) -> Vec<(String, String)> {
         // Create list of values for tuples
         let str_values = {
@@ -110,9 +112,9 @@ impl Battery {
 /// # Errors
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
+#[instrument]
 pub async fn notify(prev_percent: u32) -> Result<(), DaemonError> {
     // Get Battery from snapshot, unless uninitialised then read the current value
-    // TODO
     let battery = current_snapshot().await.battery.unwrap_or(default_source().read().await?);
 
     let current_percent = battery.percent;
@@ -145,6 +147,7 @@ pub async fn notify(prev_percent: u32) -> Result<(), DaemonError> {
 
 /// # Errors
 /// Returns an error if the requested value could not be parsed
+#[instrument]
 pub async fn evaluate_item(item: DaemonItem, battery_item: &BatteryItem) -> Result<DaemonReply, DaemonError> {
     Ok(
         // Get value (use latest() since this value changes without bar_daemon changing it)

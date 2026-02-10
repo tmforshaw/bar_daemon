@@ -1,5 +1,7 @@
 use std::str::SplitWhitespace;
 
+use tracing::instrument;
+
 use crate::{
     command,
     error::DaemonError,
@@ -29,12 +31,14 @@ pub async fn latest() -> Result<Ram, DaemonError> {
 
 // ---------------- Procps Source --------------
 
+#[derive(Debug)]
 pub struct ProcpsRam;
 
 impl RamSource for ProcpsRam {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn read(&self) -> Result<Ram, DaemonError> {
         let output = get_procps_output()?;
         let output_split = get_procps_output_split(&output)?;
@@ -54,6 +58,7 @@ impl RamSource for ProcpsRam {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn read_total(&self) -> Result<u64, DaemonError> {
         let output = get_procps_output()?;
         let output_split = get_procps_output_split(&output)?;
@@ -61,7 +66,11 @@ impl RamSource for ProcpsRam {
         let total = get_procps_total_from_split(output_split)?;
 
         // Update snapshot
-        let ram = current_snapshot().await.ram.unwrap_or_default();
+        let ram = current_snapshot()
+            .await
+            .ram
+            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
+            .unwrap_or_default();
         let _update = update_snapshot(Ram { total, ..ram }).await;
 
         Ok(total)
@@ -70,6 +79,7 @@ impl RamSource for ProcpsRam {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn read_used(&self) -> Result<u64, DaemonError> {
         let output = get_procps_output()?;
         let output_split = get_procps_output_split(&output)?;
@@ -77,7 +87,11 @@ impl RamSource for ProcpsRam {
         let used = get_procps_used_from_split(output_split)?;
 
         // Update snapshot
-        let ram = current_snapshot().await.ram.unwrap_or_default();
+        let ram = current_snapshot()
+            .await
+            .ram
+            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
+            .unwrap_or_default();
         let _update = update_snapshot(Ram { used, ..ram }).await;
 
         Ok(used)
@@ -86,6 +100,7 @@ impl RamSource for ProcpsRam {
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
+    #[instrument]
     async fn read_percent(&self) -> Result<u32, DaemonError> {
         let output = get_procps_output()?;
         let output_split = get_procps_output_split(&output)?;
@@ -96,7 +111,11 @@ impl RamSource for ProcpsRam {
         let percent = get_percent_from_used_total(used, total);
 
         // Update snapshot
-        let ram = current_snapshot().await.ram.unwrap_or_default();
+        let ram = current_snapshot()
+            .await
+            .ram
+            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
+            .unwrap_or_default();
         let _update = update_snapshot(Ram { percent, ..ram }).await;
 
         Ok(percent)
@@ -121,6 +140,7 @@ fn get_procps_output_split(output: &str) -> Result<SplitWhitespace<'_>, DaemonEr
         .split_whitespace())
 }
 
+#[instrument(skip(split))]
 fn get_procps_total_from_split(mut split: SplitWhitespace) -> Result<u64, DaemonError> {
     // Get the total bytes from the spllit, parsing into u64
     split
@@ -131,6 +151,7 @@ fn get_procps_total_from_split(mut split: SplitWhitespace) -> Result<u64, Daemon
         .map_err(Into::into)
 }
 
+#[instrument(skip(split))]
 fn get_procps_used_from_split(mut split: SplitWhitespace) -> Result<u64, DaemonError> {
     // Get the used bytes from the spllit, parsing into u64
     split

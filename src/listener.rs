@@ -43,6 +43,7 @@ pub enum ClientMessage {
 pub async fn listen() -> Result<(), DaemonError> {
     if !Path::new(SOCKET_PATH).exists() {
         error!("Socket not found. Is the daemon running?");
+        // TODO This should return and Err
         return Ok(());
     }
 
@@ -148,7 +149,7 @@ pub async fn handle_clients(
 }
 
 // TODO Add a Polled trait to simplify this and make it easier to poll values
-#[instrument]
+#[instrument(skip(clients, clients_tx))]
 pub async fn poll_values(clients: Arc<Mutex<HashMap<Uuid, Client>>>, clients_tx: mpsc::UnboundedSender<ClientMessage>) {
     let clients_empty = clients.lock().await.is_empty();
 

@@ -49,4 +49,7 @@ pub enum DaemonError {
 
     #[error("Could not read/write to path:\n\t\"{0}\"")]
     PathRwError(String),
+
+    #[error("Monitored value of type '{0}' in Snapshot was None")]
+    MonitoredEmptyError(&'static str),
 }

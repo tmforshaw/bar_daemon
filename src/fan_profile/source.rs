@@ -1,3 +1,5 @@
+use tracing::instrument;
+
 use crate::{
     command,
     error::DaemonError,
@@ -30,6 +32,7 @@ pub async fn latest() -> Result<FanProfile, DaemonError> {
 
 // ---------------- Wpctl Source ---------------
 
+#[derive(Debug)]
 pub struct AsusctlFanProfile;
 
 impl FanProfileSource for AsusctlFanProfile {
@@ -38,6 +41,7 @@ impl FanProfileSource for AsusctlFanProfile {
     /// Returns an error if the correct line can't be found
     /// Returns an error if the correct part of the line can't be found
     /// Returns an error if the profile string can't be converted to ``FanState``
+    #[instrument]
     async fn read(&self) -> Result<FanProfile, DaemonError> {
         let profile = self.read_profile().await?;
 
@@ -49,6 +53,7 @@ impl FanProfileSource for AsusctlFanProfile {
     /// Returns an error if the correct line can't be found
     /// Returns an error if the correct part of the line can't be found
     /// Returns an error if the profile string can't be converted to ``FanState``
+    #[instrument]
     async fn read_profile(&self) -> Result<FanState, DaemonError> {
         // Read the profile from the output of asusctl
         let profile = get_asusctl_profile()?;
@@ -62,6 +67,7 @@ impl FanProfileSource for AsusctlFanProfile {
     /// # Errors
     /// Returns an error if the given value is not a valid profile
     /// Returns an error if the set command can't be ran
+    #[instrument]
     async fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError> {
         let new_profile_idx;
 
@@ -73,7 +79,7 @@ impl FanProfileSource for AsusctlFanProfile {
             profile_str.trim()
         } else {
             // Profile is set via cyclic function
-            let current_profile = current_snapshot().await.fan_profile.unwrap_or_default().profile;
+            let current_profile = current_snapshot().await.fan_profile.unwrap_or(latest().await?).profile;
 
             match profile_str {
                 "next" => {
@@ -117,6 +123,7 @@ fn get_asusctl_split(output: &str) -> Result<&str, DaemonError> {
         .ok_or_else(|| DaemonError::ParseError(output.to_string()))
 }
 
+#[instrument]
 fn get_asusctl_profile() -> Result<FanState, DaemonError> {
     // Find the correct line where the fan profile is
     let output = get_asusctl_output()?;

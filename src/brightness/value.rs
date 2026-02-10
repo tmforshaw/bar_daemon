@@ -1,5 +1,6 @@
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 use crate::{
     ICON_END, ICON_EXT, NOTIFICATION_ID, command,
@@ -97,6 +98,7 @@ impl Brightness {
     /// Errors are turned into `String` and set as value of `monitor_percent` then returned as an `Ok()`
     /// Returns an error if values in the output of the command cannot be parsed
     #[must_use]
+    #[instrument]
     pub fn to_tuples(&self) -> Vec<(String, String)> {
         let str_values = {
             let icon = self.get_icon(MONITOR_ID);
@@ -113,8 +115,9 @@ impl Brightness {
 
 /// # Errors
 /// Returns an error if the requested value could not be parsed
+#[instrument]
 pub async fn notify(device_id: &str) -> Result<(), DaemonError> {
-    let brightness = current_snapshot().await.brightness.unwrap_or_default();
+    let brightness = current_snapshot().await.brightness.unwrap_or(latest().await?);
 
     let percent = if device_id == MONITOR_ID {
         brightness.monitor
@@ -186,6 +189,7 @@ pub const fn match_update_commands(commands: &BrightnessUpdateCommands) -> Daemo
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated
+#[instrument]
 pub async fn evaluate_item(
     item: DaemonItem,
     brightness_item: &BrightnessItem,
@@ -207,20 +211,34 @@ pub async fn evaluate_item(
         match brightness_item {
             BrightnessItem::Monitor => DaemonReply::Value {
                 item,
-                value: default_source().read_monitor().await?.to_string(),
+                value: match current_snapshot().await.brightness {
+                    Some(brightness) => Ok(brightness.monitor),
+                    None => default_source().read_monitor().await,
+                }?
+                .to_string(),
             },
             BrightnessItem::Keyboard => DaemonReply::Value {
                 item,
-                value: default_source().read_keyboard().await?.to_string(),
+                value: match current_snapshot().await.brightness {
+                    Some(brightness) => Ok(brightness.keyboard),
+                    None => default_source().read_keyboard().await,
+                }?
+                .to_string(),
             },
-            BrightnessItem::Icon => DaemonReply::Value {
-                item,
-                value: latest().await?.get_icon(MONITOR_ID),
-            },
-            BrightnessItem::All => DaemonReply::Tuples {
-                item,
-                tuples: latest().await?.to_tuples(),
-            },
+            BrightnessItem::Icon | BrightnessItem::All => {
+                let brightness = current_snapshot().await.brightness.unwrap_or(latest().await?);
+
+                match brightness_item {
+                    BrightnessItem::Icon => DaemonReply::Value {
+                        item,
+                        value: brightness.get_icon(MONITOR_ID),
+                    },
+                    _ => DaemonReply::Tuples {
+                        item,
+                        tuples: brightness.to_tuples(),
+                    },
+                }
+            }
         }
     })
 }

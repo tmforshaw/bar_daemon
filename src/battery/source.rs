@@ -1,5 +1,7 @@
 use std::str::Split;
 
+use tracing::instrument;
+
 use super::value::{Battery, BatteryState};
 use crate::{
     command,
@@ -28,9 +30,11 @@ pub async fn latest() -> Result<Battery, DaemonError> {
 
 // ---------------- ACPI Source ----------------
 
+#[derive(Debug)]
 pub struct AcpiBattery;
 
 impl BatterySource for AcpiBattery {
+    #[instrument]
     async fn read(&self) -> Result<Battery, DaemonError> {
         // Get ACPI output and split it into sections
         let output = get_acpi_output()?;
@@ -49,6 +53,7 @@ impl BatterySource for AcpiBattery {
         Ok(battery)
     }
 
+    #[instrument]
     async fn read_state(&self) -> Result<BatteryState, DaemonError> {
         // Get ACPI output and split it into sections
         let output = get_acpi_output()?;
@@ -63,6 +68,7 @@ impl BatterySource for AcpiBattery {
         Ok(state)
     }
 
+    #[instrument]
     async fn read_percent(&self) -> Result<u32, DaemonError> {
         // Get ACPI output and split it into sections
         let output = get_acpi_output()?;
@@ -77,6 +83,7 @@ impl BatterySource for AcpiBattery {
         Ok(percent)
     }
 
+    #[instrument]
     async fn read_time(&self) -> Result<String, DaemonError> {
         // Get ACPI output and split it into sections
         let output = get_acpi_output()?;
@@ -106,6 +113,7 @@ fn get_acpi_split(output: &str) -> Split<'_, char> {
     output.split(',')
 }
 
+#[instrument(skip(output_split))]
 fn get_state_from_acpi_split(mut output_split: Split<char>) -> Result<BatteryState, DaemonError> {
     // Get the state from the split and convert it to a BatteryState enum
     match output_split
@@ -121,6 +129,7 @@ fn get_state_from_acpi_split(mut output_split: Split<char>) -> Result<BatterySta
     }
 }
 
+#[instrument(skip(output_split))]
 fn get_percent_from_acpi_split(mut output_split: std::str::Split<char>) -> Result<u32, DaemonError> {
     // Parse the percentage from split and convert to u32
     Ok(output_split
@@ -131,6 +140,7 @@ fn get_percent_from_acpi_split(mut output_split: std::str::Split<char>) -> Resul
         .parse::<u32>()?)
 }
 
+#[instrument(skip(output_split))]
 fn get_time_from_acpi_split(mut output_split: std::str::Split<char>) -> Result<String, DaemonError> {
     // Return empty string if the time part of the output_split is not present
     let Some(time_string_unsplit) = output_split.nth(2) else {
