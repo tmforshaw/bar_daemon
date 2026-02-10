@@ -11,7 +11,6 @@
 #![allow(clippy::implicit_hasher)]
 
 // TODO Re-add the soft errors back in so that errors can easily be found
-// TODO Values of volume/brightness still show up as 0 on startup
 // TODO When values are polled it seems like 2 messages are sent in quick succession
 
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
