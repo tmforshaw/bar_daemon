@@ -145,7 +145,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
 /// Returns an error if ``DaemonMessage`` could not be created from bytes
 /// Returns an error if requested value cannot be found or parsed
 /// Returns an error if socket could not be wrote to
-#[instrument(skip(clients, clients_tx, notify))]
+#[instrument(skip(stream, clients, clients_tx, notify))]
 pub async fn handle_socket(
     mut stream: UnixStream,
     clients: SharedClients,
