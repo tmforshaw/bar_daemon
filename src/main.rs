@@ -11,7 +11,6 @@
 #![allow(clippy::implicit_hasher)]
 
 // TODO Re-add the soft errors back in so that errors can easily be found
-// TODO When values are polled it seems like 2 messages are sent in quick succession
 // TODO Put the error!() tracing function into default_source since it won't capture functions like read_percent when it's in latest()
 
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
