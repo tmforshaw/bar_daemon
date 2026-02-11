@@ -1,8 +1,8 @@
 use tracing::{info, instrument};
 
-use crate::snapshot::Snapshot;
+use crate::snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MonitoredUpdate<M: Monitored> {
     old: Option<M>,
     new: M,
@@ -11,22 +11,13 @@ pub struct MonitoredUpdate<M: Monitored> {
 pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + 'static {
     fn get(snapshot: &Snapshot) -> Option<Self>;
     fn set(snapshot: &mut Snapshot, new: Self);
-    // fn notify(update: MonitoredUpdate<Self>);
-
-    // /// # Documentation
-    // /// Use this when the value shouldn't be set to default and an error should be returned instead
-    // /// # Errors
-    // /// Gives the `DaemonError` for finding an empty `Monitored` value in `Snapshot`
-    // fn couldnt_find_monitored() -> Result<Self, DaemonError> {
-    //     Err(DaemonError::MonitoredEmptyError(std::any::type_name::<Self>()))
-    // }
 }
 
 /// # Documentation
 /// Updates the `Monitored` value within the `Snapshot` and returns a `MonitoredUpdate`
 #[must_use]
 #[instrument(skip(snapshot, new))]
-pub fn update_monitored<M: Monitored>(snapshot: &mut Snapshot, new: M) -> MonitoredUpdate<M> {
+pub fn update_monitored<M: Monitored + IntoSnapshotEvent>(snapshot: &mut Snapshot, new: M) -> MonitoredUpdate<M> {
     // Get the old value from the snapshot, then replace with the new value
     let old = M::get(snapshot);
     M::set(snapshot, new.clone());
@@ -38,7 +29,8 @@ pub fn update_monitored<M: Monitored>(snapshot: &mut Snapshot, new: M) -> Monito
         // Log the update
         info!("Monitored Value Updated: {update:?}");
 
-        // Notify change
+        // Broadcast update
+        broadcast_snapshot_event(M::into_event(update.clone()));
     }
 
     update
@@ -46,7 +38,6 @@ pub fn update_monitored<M: Monitored>(snapshot: &mut Snapshot, new: M) -> Monito
 
 /// # Documentation
 /// Generate the `Impl` for `Monitored` using the given `type_name` and `field_name`
-/// For notifications to work the `file_name` which the `notify()` function is in must be the same as `field_name` for this `type_name`
 #[macro_export]
 macro_rules! impl_monitored {
     ($type_name:ident, $field_name:ident) => {
@@ -63,10 +54,6 @@ macro_rules! impl_monitored {
                 // Show that this snapshot happened now
                 snapshot.timestamp = std::time::Instant::now();
             }
-
-            // fn notify(update: $crate::monitored::MonitoredUpdate<Self>) {
-            //     $crate::$field_name::notify();
-            // }
         }
     };
 }

@@ -8,9 +8,9 @@ use crate::{
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
     fan_profile::latest,
-    impl_monitored,
-    monitored::Monitored,
-    snapshot::{Snapshot, current_snapshot},
+    impl_into_snapshot_event, impl_monitored,
+    monitored::{Monitored, MonitoredUpdate},
+    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
 use super::{FAN_STATE_STRINGS, FanProfileSource, default_source};
@@ -68,6 +68,7 @@ pub struct FanProfile {
 }
 
 impl_monitored!(FanProfile, fan_profile);
+impl_into_snapshot_event!(FanProfile);
 
 impl FanProfile {
     #[must_use]

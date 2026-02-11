@@ -5,9 +5,9 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_monitored,
-    monitored::Monitored,
-    snapshot::{Snapshot, current_snapshot},
+    impl_into_snapshot_event, impl_monitored,
+    monitored::{Monitored, MonitoredUpdate},
+    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
 use super::{VolumeSource, default_source, latest};
@@ -63,6 +63,7 @@ pub struct Volume {
 }
 
 impl_monitored!(Volume, volume);
+impl_into_snapshot_event!(Volume);
 
 impl Volume {
     #[must_use]

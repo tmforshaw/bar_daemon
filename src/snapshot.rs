@@ -3,7 +3,7 @@ use std::{
     time::Instant,
 };
 
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, broadcast};
 use tracing::instrument;
 
 use crate::{
@@ -51,7 +51,55 @@ pub async fn current_snapshot() -> Snapshot {
 
 #[must_use]
 #[instrument]
-pub async fn update_snapshot<M: Monitored>(new_value: M) -> MonitoredUpdate<M> {
+pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: M) -> MonitoredUpdate<M> {
     let mut snapshot = CURRENT_SNAPSHOT.write().await;
     update_monitored(&mut snapshot, new_value)
+}
+
+static SNAPSHOT_EVENTS: LazyLock<broadcast::Sender<SnapshotEvent>> = LazyLock::new(|| {
+    let (tx, _) = broadcast::channel(64);
+    tx
+});
+
+pub fn subscribe_snapshot() -> broadcast::Receiver<SnapshotEvent> {
+    SNAPSHOT_EVENTS.subscribe()
+}
+
+pub fn broadcast_snapshot_event(event: SnapshotEvent) {
+    // Drop since only returns Err when there are no receivers
+    let _ = SNAPSHOT_EVENTS.send(event);
+}
+
+#[derive(Clone, Debug)]
+pub enum SnapshotEvent {
+    Battery(MonitoredUpdate<Battery>),
+    Bluetooth(MonitoredUpdate<Bluetooth>),
+    Brightness(MonitoredUpdate<Brightness>),
+    FanProfile(MonitoredUpdate<FanProfile>),
+    Ram(MonitoredUpdate<Ram>),
+    Volume(MonitoredUpdate<Volume>),
+}
+
+pub trait IntoSnapshotEvent: Monitored {
+    fn into_event(update: MonitoredUpdate<Self>) -> SnapshotEvent;
+}
+
+/// # Documentation
+/// Generate the `Impl` for `IntoSnapshotEvent` using the given `type_name`
+/// Generate the `Impl` `From<MonitoredUpdate<$type_name>> for SnapshotEvent` using the given `type_name`
+#[macro_export]
+macro_rules! impl_into_snapshot_event {
+    ($type_name:ident) => {
+        impl IntoSnapshotEvent for $type_name {
+            fn into_event(update: MonitoredUpdate<Self>) -> SnapshotEvent {
+                SnapshotEvent::$type_name(update)
+            }
+        }
+
+        impl From<MonitoredUpdate<$type_name>> for SnapshotEvent {
+            fn from(update: MonitoredUpdate<$type_name>) -> Self {
+                IntoSnapshotEvent::into_event(update)
+            }
+        }
+    };
 }

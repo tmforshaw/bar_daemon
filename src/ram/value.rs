@@ -6,9 +6,9 @@ use crate::{
     ICON_END, ICON_EXT,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_monitored,
-    monitored::Monitored,
-    snapshot::{Snapshot, current_snapshot},
+    impl_into_snapshot_event, impl_monitored,
+    monitored::{Monitored, MonitoredUpdate},
+    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
 use super::{RamSource, default_source, latest};
@@ -42,6 +42,7 @@ pub struct Ram {
 }
 
 impl_monitored!(Ram, ram);
+impl_into_snapshot_event!(Ram);
 
 impl Ram {
     #[must_use]

@@ -7,9 +7,9 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_monitored,
-    monitored::Monitored,
-    snapshot::{Snapshot, current_snapshot},
+    impl_into_snapshot_event, impl_monitored,
+    monitored::{Monitored, MonitoredUpdate},
+    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
 use super::{BrightnessSource, MONITOR_ID, default_source, latest};
@@ -61,6 +61,7 @@ pub struct Brightness {
 }
 
 impl_monitored!(Brightness, brightness);
+impl_into_snapshot_event!(Brightness);
 
 impl Brightness {
     #[must_use]

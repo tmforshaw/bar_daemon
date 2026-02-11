@@ -9,9 +9,9 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_monitored,
-    monitored::Monitored,
-    snapshot::{Snapshot, current_snapshot},
+    impl_into_snapshot_event, impl_monitored,
+    monitored::{Monitored, MonitoredUpdate},
+    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
 use super::{BluetoothSource, default_source, latest};
@@ -52,6 +52,7 @@ pub struct Bluetooth {
 }
 
 impl_monitored!(Bluetooth, bluetooth);
+impl_into_snapshot_event!(Bluetooth);
 
 impl Bluetooth {
     #[must_use]
