@@ -1,15 +1,18 @@
 use tracing::{debug, instrument};
 
-use crate::snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event};
+use crate::{
+    observed::Observed::{self, Valid},
+    snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event},
+};
 
 #[derive(Clone, Debug)]
 pub struct MonitoredUpdate<M: Monitored> {
-    pub old: Option<M>,
+    pub old: Observed<M>,
     pub new: M,
 }
 
 pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + 'static {
-    fn get(snapshot: &Snapshot) -> Option<Self>;
+    fn get(snapshot: &Snapshot) -> Observed<Self>;
     fn set(snapshot: &mut Snapshot, new: Self);
 }
 
@@ -25,7 +28,7 @@ pub fn update_monitored<M: Monitored + IntoSnapshotEvent>(snapshot: &mut Snapsho
     let update = MonitoredUpdate { old, new };
 
     // Check that the update changed the data
-    if update.old != Some(update.new.clone()) {
+    if update.old != Valid(update.new.clone()) {
         // Log the update
         debug!("Monitored Value Updated: {update:?}");
 
@@ -42,14 +45,14 @@ pub fn update_monitored<M: Monitored + IntoSnapshotEvent>(snapshot: &mut Snapsho
 macro_rules! impl_monitored {
     ($type_name:ident, $field_name:ident) => {
         impl Monitored for $type_name {
-            fn get(snapshot: &Snapshot) -> Option<Self> {
+            fn get(snapshot: &Snapshot) -> Observed<Self> {
                 // Get the given field
                 snapshot.$field_name.clone()
             }
 
             fn set(snapshot: &mut Snapshot, new: Self) {
                 // Set the given field to the new value
-                snapshot.$field_name = Some(new);
+                snapshot.$field_name = Valid(new);
 
                 // Show that this snapshot happened now
                 snapshot.timestamp = std::time::Instant::now();

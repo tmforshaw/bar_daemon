@@ -7,6 +7,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
+    observed::Observed::{self, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
@@ -114,7 +115,7 @@ impl Volume {
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> {
     // Only create notification if the update changed something
-    if update.old != Some(update.clone().new) {
+    if update.old != Valid(update.clone().new) {
         command::run(
             "dunstify",
             &[
@@ -159,16 +160,16 @@ pub async fn evaluate_item(
             VolumeItem::Percent => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.volume {
-                    Some(volume) => Ok(volume.percent),
-                    None => default_source().read_percent().await,
+                    Valid(volume) => Ok(volume.percent),
+                    Unavailable => default_source().read_percent().await,
                 }?
                 .to_string(),
             },
             VolumeItem::Mute => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.volume {
-                    Some(volume) => Ok(volume.mute),
-                    None => default_source().read_mute().await,
+                    Valid(volume) => Ok(volume.mute),
+                    Unavailable => default_source().read_mute().await,
                 }?
                 .to_string(),
             },

@@ -10,6 +10,7 @@ use crate::{
     fan_profile::latest,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
+    observed::Observed::{self, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };

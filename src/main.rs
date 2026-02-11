@@ -28,6 +28,7 @@ pub mod listener;
 pub mod log_linear;
 pub mod logging;
 pub mod monitored;
+pub mod observed;
 pub mod polled;
 pub mod ram;
 pub mod shutdown;

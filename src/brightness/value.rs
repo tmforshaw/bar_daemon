@@ -9,6 +9,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
+    observed::Observed::{self, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
@@ -111,7 +112,7 @@ impl Brightness {
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Result<(), DaemonError> {
     // If the update changed something
-    if update.old != Some(update.clone().new) {
+    if update.old != Valid(update.clone().new) {
         // Select the percent of the device which is being notified
         let percent = if device_id == MONITOR_ID {
             update.new.monitor
@@ -193,16 +194,16 @@ pub async fn evaluate_item(
             BrightnessItem::Monitor => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.brightness {
-                    Some(brightness) => Ok(brightness.monitor),
-                    None => default_source().read_monitor().await,
+                    Valid(brightness) => Ok(brightness.monitor),
+                    Unavailable => default_source().read_monitor().await,
                 }?
                 .to_string(),
             },
             BrightnessItem::Keyboard => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.brightness {
-                    Some(brightness) => Ok(brightness.keyboard),
-                    None => default_source().read_keyboard().await,
+                    Valid(brightness) => Ok(brightness.keyboard),
+                    Unavailable => default_source().read_keyboard().await,
                 }?
                 .to_string(),
             },

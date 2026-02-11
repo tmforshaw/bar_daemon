@@ -11,6 +11,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
+    observed::Observed::{self, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
@@ -82,7 +83,7 @@ impl Bluetooth {
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonError> {
     // Only create notification if the update changed something
-    if update.old != Some(update.clone().new) {
+    if update.old != Valid(update.clone().new) {
         command::run(
             "dunstify",
             &[
@@ -122,8 +123,8 @@ pub async fn evaluate_item(
             BluetoothItem::State => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.bluetooth {
-                    Some(bluetooth) => Ok(bluetooth.state),
-                    None => default_source().read_state().await,
+                    Valid(bluetooth) => Ok(bluetooth.state),
+                    Unavailable => default_source().read_state().await,
                 }?
                 .to_string(),
             },

@@ -16,6 +16,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
+    observed::Observed::{self, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent},
 };
@@ -152,9 +153,9 @@ pub async fn notify(update: MonitoredUpdate<Battery>) -> Result<(), DaemonError>
     }
 
     // Only perform checks if the update changed something
-    if update.old != Some(update.clone().new) {
+    if update.old != Valid(update.clone().new) {
         // The state changed in this update
-        if update.old.is_none_or(|old| old.state != update.new.state) {
+        if update.old.is_unavailable_or(|old| old.state != update.new.state) {
             // Mark all notifications as non-completed
             *(BAT_NOTIFY_STATE.write().await) = BatteryNotifyState::default();
         }

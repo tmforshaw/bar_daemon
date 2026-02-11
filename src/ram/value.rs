@@ -8,6 +8,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
+    observed::Observed::{self, Unavailable, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
@@ -95,24 +96,24 @@ pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<Daemo
             RamItem::Total => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
-                    Some(ram) => Ok(ram.total),
-                    None => default_source().read_total().await,
+                    Valid(ram) => Ok(ram.total),
+                    Unavailable => default_source().read_total().await,
                 }?
                 .to_string(),
             },
             RamItem::Used => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
-                    Some(ram) => Ok(ram.used),
-                    None => default_source().read_used().await,
+                    Valid(ram) => Ok(ram.used),
+                    Unavailable => default_source().read_used().await,
                 }?
                 .to_string(),
             },
             RamItem::Percent => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
-                    Some(ram) => Ok(ram.percent),
-                    None => default_source().read_percent().await,
+                    Valid(ram) => Ok(ram.percent),
+                    Unavailable => default_source().read_percent().await,
                 }?
                 .to_string(),
             },

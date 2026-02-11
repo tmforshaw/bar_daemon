@@ -12,30 +12,31 @@ use crate::{
     brightness::Brightness,
     fan_profile::FanProfile,
     monitored::{Monitored, MonitoredUpdate, update_monitored},
+    observed::Observed::{self, Unavailable},
     ram::Ram,
     volume::Volume,
 };
 
 #[derive(Clone, Debug)]
 pub struct Snapshot {
-    pub battery: Option<Battery>,
-    pub bluetooth: Option<Bluetooth>,
-    pub brightness: Option<Brightness>,
-    pub fan_profile: Option<FanProfile>,
-    pub ram: Option<Ram>,
-    pub volume: Option<Volume>,
+    pub battery: Observed<Battery>,
+    pub bluetooth: Observed<Bluetooth>,
+    pub brightness: Observed<Brightness>,
+    pub fan_profile: Observed<FanProfile>,
+    pub ram: Observed<Ram>,
+    pub volume: Observed<Volume>,
     pub timestamp: Instant,
 }
 
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
-            battery: None,
-            bluetooth: None,
-            brightness: None,
-            fan_profile: None,
-            ram: None,
-            volume: None,
+            battery: Unavailable,
+            bluetooth: Unavailable,
+            brightness: Unavailable,
+            fan_profile: Unavailable,
+            ram: Unavailable,
+            volume: Unavailable,
             timestamp: Instant::now(),
         }
     }

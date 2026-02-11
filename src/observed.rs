@@ -1,0 +1,83 @@
+use Observed::{Unavailable, Valid};
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub enum Observed<T> {
+    Valid(T),
+    Unavailable,
+}
+
+impl<T: ToString> From<Observed<T>> for String {
+    fn from(value: Observed<T>) -> Self {
+        match value {
+            Observed::Valid(v) => v.to_string(),
+            Observed::Unavailable => Self::from("?"),
+        }
+    }
+}
+
+// Unwrap-style functions
+
+impl<T> Observed<T> {
+    /// # Panics
+    /// Panics if `self` is `Observed::Unavailable`
+    pub fn unwrap(self) -> T {
+        match self {
+            Valid(v) => v,
+            Unavailable => panic!("Called 'unwrap()' on 'Unavailable'"),
+        }
+    }
+
+    /// # Panics
+    /// Panics if `self` is `Unavailable`
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            Valid(v) => v,
+            Unavailable => panic!("{msg}"),
+        }
+    }
+
+    pub fn unwrap_or(self, default: T) -> T {
+        match self {
+            Valid(v) => v,
+            Unavailable => default,
+        }
+    }
+
+    pub fn unwrap_or_else<F: Fn() -> T>(self, f: F) -> T {
+        match self {
+            Valid(v) => v,
+            Unavailable => f(),
+        }
+    }
+
+    pub fn is_valid(self) -> bool {
+        matches!(self, Self::Valid(_))
+    }
+
+    pub fn is_unavailable(self) -> bool {
+        matches!(self, Self::Unavailable)
+    }
+
+    pub fn is_valid_or<F: Fn() -> bool>(self, f: F) -> bool {
+        match self {
+            Valid(_) => true,
+            Unavailable => f(),
+        }
+    }
+
+    pub fn is_unavailable_or<F: Fn(T) -> bool>(self, f: F) -> bool {
+        match self {
+            Valid(v) => f(v),
+            Unavailable => true,
+        }
+    }
+}
+
+impl<T: Default> Observed<T> {
+    pub fn unwrap_or_default(self) -> T {
+        match self {
+            Valid(v) => v,
+            Unavailable => T::default(),
+        }
+    }
+}
