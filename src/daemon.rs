@@ -18,6 +18,7 @@ use crate::{
     listener::{Client, ClientMessage, SharedClients, handle_clients, poll_values},
     ram::{self, RamItem},
     shutdown::shutdown_signal,
+    snapshot::subscribe_snapshot,
     tuples::get_all_tuples,
     volume::{self, VolumeItem},
 };
@@ -81,8 +82,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
     // Create new UnixListener at SOCKET_PATH
     let listener = UnixListener::bind(SOCKET_PATH)?;
 
-    // Enable back and forth communication from each socket handler and the client handler
-    let (clients_tx, mut clients_rx) = mpsc::unbounded_channel::<ClientMessage>();
+    let mut snapshot_rx = subscribe_snapshot();
 
     // Remember listener clients to broadcast to
     let clients: SharedClients = Arc::new(Mutex::new(HashMap::new()));
@@ -90,17 +90,21 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
     // Spawn a task which handles listener clients
     let clients_clone = clients.clone();
     let notify_clone = shutdowwn_notify.clone();
-    tokio::spawn(async move { handle_clients(clients_clone, &mut clients_rx, notify_clone).await });
+    tokio::spawn(async move { handle_clients(clients_clone, &mut snapshot_rx, notify_clone).await });
 
     // Create a task which polls the state of certain values
     let clients_clone = clients.clone();
-    let clients_tx_clone = clients_tx.clone();
 
+    // Enable back and forth communication from each socket handler and the client handler
+    let (clients_tx, _) = mpsc::unbounded_channel::<ClientMessage>();
+
+    // TODO add this back as a trait
+    // TODO this won't work right now since there is nothing to recieve the message
     let shutdown_notify_clone = shutdowwn_notify.clone();
     tokio::spawn(async move {
         loop {
             tokio::select! {
-                () = poll_values(clients_clone.clone(), clients_tx_clone.clone()) => {}
+                () = poll_values(clients_clone.clone(), clients_tx.clone()) => {}
                 () = shutdown_notify_clone.notified() => {
                     info!("Shutdown notified, cleaning up poll loop");
                 }
@@ -123,9 +127,10 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
 
                 // Spawn a task which handles this socket
                 let clients_clone = clients.clone();
-                let clients_tx_clone = clients_tx.clone();
+                // TODO Remove this
+                // let clients_tx_clone = clients_tx.clone();
                 let shutdown_notify_clone = shutdowwn_notify.clone();
-                tokio::spawn(async move { handle_socket(stream, clients_clone, clients_tx_clone, shutdown_notify_clone).await });
+                tokio::spawn(async move { handle_socket(stream, clients_clone, shutdown_notify_clone).await });
             }
         }
     }
@@ -145,11 +150,11 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
 /// Returns an error if ``DaemonMessage`` could not be created from bytes
 /// Returns an error if requested value cannot be found or parsed
 /// Returns an error if socket could not be wrote to
-#[instrument(skip(stream, clients, clients_tx, shutdown_notify))]
+#[instrument(skip(stream, clients, shutdown_notify))]
 pub async fn handle_socket(
     mut stream: UnixStream,
     clients: SharedClients,
-    clients_tx: mpsc::UnboundedSender<ClientMessage>,
+    // clients_tx: mpsc::UnboundedSender<ClientMessage>,
     shutdown_notify: Arc<Notify>,
 ) -> Result<(), DaemonError> {
     let mut buf = [0; BUFFER_SIZE];
@@ -166,53 +171,55 @@ pub async fn handle_socket(
 
                 let reply = match message {
                     DaemonMessage::Set { item, value }=> {
-                        // Broadcast which value has been updated
-                        clients_tx.send(match item {
-                            DaemonItem::Volume(_) => ClientMessage::UpdateVolume,
-                            DaemonItem::Brightness(_) => ClientMessage::UpdateBrightness,
-                            DaemonItem::Bluetooth(_) => ClientMessage::UpdateBluetooth,
-                            DaemonItem::Battery(_) => ClientMessage::UpdateBattery,
-                            DaemonItem::Ram(_) => ClientMessage::UpdateRam,
-                            DaemonItem::FanProfile(_) => ClientMessage::UpdateFanProfile,
-                            DaemonItem::All => ClientMessage::UpdateAll,
-                        })?;
+                        // TODO remove this
+                        // // Broadcast which value has been updated
+                        // clients_tx.send(match item {
+                        //     DaemonItem::Volume(_) => ClientMessage::UpdateVolume,
+                        //     DaemonItem::Brightness(_) => ClientMessage::UpdateBrightness,
+                        //     DaemonItem::Bluetooth(_) => ClientMessage::UpdateBluetooth,
+                        //     DaemonItem::Battery(_) => ClientMessage::UpdateBattery,
+                        //     DaemonItem::Ram(_) => ClientMessage::UpdateRam,
+                        //     DaemonItem::FanProfile(_) => ClientMessage::UpdateFanProfile,
+                        //     DaemonItem::All => ClientMessage::UpdateAll,
+                        // })?;
 
                         match_set_command(item.clone(), value.clone()).await?
                     }
                     DaemonMessage::Get { item } => match_get_command(item.clone()).await?,
                     DaemonMessage::Update {item} => {
-                        // Broadcast which value has been updated
-                        clients_tx.send(match item {
-                            DaemonItem::Volume(_) => {
-                                volume::notify().await?;
+                        // TODO Remove this
+                        // // Broadcast which value has been updated
+                        // clients_tx.send(match item {
+                        //     DaemonItem::Volume(_) => {
+                        //         volume::notify().await?;
 
-                                ClientMessage::UpdateVolume
-                            },
-                            DaemonItem::Brightness(_) => {
-                                // TODO
-                                brightness::notify(MONITOR_ID).await?;
-                                brightness::notify(KEYBOARD_ID).await?;
+                        //         ClientMessage::UpdateVolume
+                        //     },
+                        //     DaemonItem::Brightness(_) => {
+                        //         // TODO
+                        //         brightness::notify(MONITOR_ID).await?;
+                        //         brightness::notify(KEYBOARD_ID).await?;
 
-                                ClientMessage::UpdateBrightness
-                            },
-                            DaemonItem::Bluetooth(_) => {
-                                bluetooth::notify().await?;
+                        //         ClientMessage::UpdateBrightness
+                        //     },
+                        //     DaemonItem::Bluetooth(_) => {
+                        //         bluetooth::notify().await?;
 
-                                ClientMessage::UpdateBluetooth
-                            },
-                            DaemonItem::Battery(_) => {
-                                battery::notify(u32::MAX).await?;
+                        //         ClientMessage::UpdateBluetooth
+                        //     },
+                        //     DaemonItem::Battery(_) => {
+                        //         battery::notify(u32::MAX).await?;
 
-                                ClientMessage::UpdateBattery
-                            },
-                            DaemonItem::Ram(_) => ClientMessage::UpdateRam,
-                            DaemonItem::FanProfile(_) => {
-                                fan_profile::notify().await?;
+                        //         ClientMessage::UpdateBattery
+                        //     },
+                        //     DaemonItem::Ram(_) => ClientMessage::UpdateRam,
+                        //     DaemonItem::FanProfile(_) => {
+                        //         fan_profile::notify().await?;
 
-                                ClientMessage::UpdateFanProfile
-                            },
-                            DaemonItem::All => ClientMessage::UpdateAll,
-                        })?;
+                        //         ClientMessage::UpdateFanProfile
+                        //     },
+                        //     DaemonItem::All => ClientMessage::UpdateAll,
+                        // })?;
 
                         match_get_command(item.clone()).await?
                     }

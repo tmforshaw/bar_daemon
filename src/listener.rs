@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::UnixStream,
-    sync::{Mutex, Notify, mpsc},
+    sync::{Mutex, Notify, broadcast, mpsc},
 };
 use tracing::{error, info, instrument};
 use uuid::Uuid;
@@ -13,7 +13,8 @@ use crate::{
     daemon::{DaemonMessage, SOCKET_PATH},
     error::DaemonError,
     json::tuples_to_json,
-    tuples::{TUPLE_NAMES, TupleName, get_all_tuples, tuple_name_to_tuples},
+    snapshot::SnapshotEvent,
+    tuples::{TUPLE_NAMES, TupleName, get_all_tuples},
 };
 
 #[derive(Debug)]
@@ -84,54 +85,45 @@ pub type SharedClients = Arc<Mutex<HashMap<Uuid, Client>>>;
 /// Returns an error if ``DaemonMessage`` could not be created from bytes
 /// Returns an error if socket cannot be read
 /// Returns an error if socket could not be wrote to
-#[instrument(skip(clients, clients_rx, shutdown_notify))]
+#[instrument(skip(clients, snapshot_rx, shutdown_notify))]
 pub async fn handle_clients(
     clients: SharedClients,
-    clients_rx: &mut mpsc::UnboundedReceiver<ClientMessage>,
+    snapshot_rx: &mut broadcast::Receiver<SnapshotEvent>,
     shutdown_notify: Arc<Notify>,
 ) -> Result<(), DaemonError> {
-    let mut tuples = Mutex::new(get_all_tuples().await?);
+    let tuples = Mutex::new(get_all_tuples().await?);
 
     loop {
         tokio::select! {
-            client_message_result = clients_rx.recv() => {
-                // Only show messages when the update has been asked for
-                let Some(client_message) = client_message_result else {
-                    continue;
-                };
-
+            Ok(event)= snapshot_rx.recv() => {
                 let clients_empty = clients.lock().await.is_empty();
 
                 if !clients_empty {
-                    if matches!(client_message, ClientMessage::UpdateAll) {
-                        // Get the tuples for all values
-                        tuples = Mutex::new(get_all_tuples().await?);
-                    } else {
-                        // Get the TupleName for this message
-                        let tuple_name = match client_message {
-                            ClientMessage::UpdateVolume => TupleName::Volume,
-                            ClientMessage::UpdateBrightness => TupleName::Brightness,
-                            ClientMessage::UpdateBluetooth => TupleName::Bluetooth,
-                            ClientMessage::UpdateBattery => TupleName::Battery,
-                            ClientMessage::UpdateRam => TupleName::Ram,
-                            ClientMessage::UpdateFanProfile => TupleName::FanProfile,
-                            ClientMessage::UpdateAll => unreachable!(),
-                        };
+                    info!("SnapshotEvent Received: {event:?}");
 
-                        // Update the inner of the Mutex
-                        let mut tuples = tuples.lock().await;
-                        (*tuples)[tuple_name as usize] = (
-                            TUPLE_NAMES[tuple_name as usize].to_string(),
-                            tuple_name_to_tuples(&tuple_name).await?,
+                    let (index, new_tuples) = match event {
+                        SnapshotEvent::Battery(update) => (TupleName::Battery as usize, update.new.to_tuples()),
+                        SnapshotEvent::Bluetooth(update) => (TupleName::Bluetooth as usize, update.new.to_tuples()),
+                        SnapshotEvent::Brightness(update) => (TupleName::Brightness as usize, update.new.to_tuples()),
+                        SnapshotEvent::FanProfile(update) => (TupleName::FanProfile as usize, update.new.to_tuples()),
+                        SnapshotEvent::Ram(update) => (TupleName::Ram as usize, update.new.to_tuples()),
+                        SnapshotEvent::Volume(update) => (TupleName::Volume as usize, update.new.to_tuples()),
+                    };
+
+                    // Convert the updated tuples to JSON
+                    let json = tuples_to_json({
+                       // Update the inner of the tuples Mutex
+                       let mut tuples_guard = tuples.lock().await;
+                       (*tuples_guard)[index] = (
+                            TUPLE_NAMES[index].to_string(),
+                            new_tuples,
                         );
-                    }
 
-                    let mut to_remove = vec![];
+                       tuples_guard.clone()
+                    })? + "\n";
 
-                    let json = tuples_to_json(tuples.lock().await.clone())? + "\n";
-
-                    // TODO Broadcasting should be done via snapshot events
                     // Broadcast to each client
+                    let mut to_remove = vec![];
                     for (id, client) in clients.lock().await.iter_mut() {
                         if let Err(e) = client.stream.try_write(json.as_bytes()) {
                             error!("Write failed for {id}: {e}");

@@ -4,8 +4,8 @@ use crate::snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event};
 
 #[derive(Clone, Debug)]
 pub struct MonitoredUpdate<M: Monitored> {
-    old: Option<M>,
-    new: M,
+    pub old: Option<M>,
+    pub new: M,
 }
 
 pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + 'static {
