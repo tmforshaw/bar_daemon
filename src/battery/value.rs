@@ -11,8 +11,9 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_into_snapshot_event, impl_monitored,
+    impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
+    polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
@@ -58,6 +59,7 @@ pub struct Battery {
 
 impl_monitored!(Battery, battery);
 impl_into_snapshot_event!(Battery);
+impl_polled!(Battery, battery);
 
 impl Battery {
     #[must_use]

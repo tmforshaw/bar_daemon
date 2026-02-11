@@ -3,13 +3,12 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::UnixStream,
-    sync::{Mutex, Notify, broadcast, mpsc},
+    sync::{Mutex, Notify, broadcast},
 };
 use tracing::{error, info, instrument};
 use uuid::Uuid;
 
 use crate::{
-    config::get_config,
     daemon::{DaemonMessage, SOCKET_PATH},
     error::DaemonError,
     json::tuples_to_json,
@@ -21,17 +20,6 @@ use crate::{
 pub struct Client {
     pub id: Uuid,
     pub stream: UnixStream,
-}
-
-// TODO Replace this with the Snapshot MonitoredUpdate to ensure that updates are only sent when necessary
-pub enum ClientMessage {
-    UpdateVolume,
-    UpdateBrightness,
-    UpdateBluetooth,
-    UpdateBattery,
-    UpdateRam,
-    UpdateFanProfile,
-    UpdateAll,
 }
 
 /// # Errors
@@ -148,28 +136,4 @@ pub async fn handle_clients(
     info!("Client handler shutdown successfuly");
 
     Ok(())
-}
-
-// TODO Add a Polled trait to simplify this and make it easier to poll values
-#[instrument(skip(clients, clients_tx))]
-pub async fn poll_values(clients: Arc<Mutex<HashMap<Uuid, Client>>>, clients_tx: mpsc::UnboundedSender<ClientMessage>) {
-    let clients_empty = clients.lock().await.is_empty();
-
-    // Only poll the values when there are listener clients
-    if !clients_empty {
-        clients_tx
-            .send(ClientMessage::UpdateBattery)
-            .unwrap_or_else(|e| error!("{}", Into::<DaemonError>::into(e)));
-
-        clients_tx
-            .send(ClientMessage::UpdateRam)
-            .unwrap_or_else(|e| error!("{}", Into::<DaemonError>::into(e)));
-
-        clients_tx
-            .send(ClientMessage::UpdateFanProfile)
-            .unwrap_or_else(|e| error!("{}", Into::<DaemonError>::into(e)));
-    }
-
-    // Set the polling rate
-    tokio::time::sleep(tokio::time::Duration::from_millis(get_config().polling_rate)).await;
 }

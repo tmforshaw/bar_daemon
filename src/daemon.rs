@@ -4,19 +4,20 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
-    sync::{Mutex, Notify, mpsc},
+    sync::{Mutex, Notify},
 };
 use tracing::{info, instrument, trace};
 use uuid::Uuid;
 
 use crate::{
-    battery::{self, BatteryItem},
+    battery::{self, Battery, BatteryItem},
     bluetooth::{self, BluetoothItem},
-    brightness::{self, BrightnessItem, KEYBOARD_ID, MONITOR_ID},
+    brightness::{self, BrightnessItem},
     error::DaemonError,
-    fan_profile::{self, FanProfileItem},
-    listener::{Client, ClientMessage, SharedClients, handle_clients, poll_values},
-    ram::{self, RamItem},
+    fan_profile::{self, FanProfile, FanProfileItem},
+    listener::{Client, SharedClients, handle_clients},
+    polled::spawn_poller,
+    ram::{self, Ram, RamItem},
     shutdown::shutdown_signal,
     snapshot::subscribe_snapshot,
     tuples::get_all_tuples,
@@ -82,6 +83,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
     // Create new UnixListener at SOCKET_PATH
     let listener = UnixListener::bind(SOCKET_PATH)?;
 
+    // Create a receiver for SnapshotEvents
     let mut snapshot_rx = subscribe_snapshot();
 
     // Remember listener clients to broadcast to
@@ -89,28 +91,13 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
 
     // Spawn a task which handles listener clients
     let clients_clone = clients.clone();
-    let notify_clone = shutdowwn_notify.clone();
-    tokio::spawn(async move { handle_clients(clients_clone, &mut snapshot_rx, notify_clone).await });
-
-    // Create a task which polls the state of certain values
-    let clients_clone = clients.clone();
-
-    // Enable back and forth communication from each socket handler and the client handler
-    let (clients_tx, _) = mpsc::unbounded_channel::<ClientMessage>();
-
-    // TODO add this back as a trait
-    // TODO this won't work right now since there is nothing to recieve the message
     let shutdown_notify_clone = shutdowwn_notify.clone();
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                () = poll_values(clients_clone.clone(), clients_tx.clone()) => {}
-                () = shutdown_notify_clone.notified() => {
-                    info!("Shutdown notified, cleaning up poll loop");
-                }
-            }
-        }
-    });
+    tokio::spawn(async move { handle_clients(clients_clone, &mut snapshot_rx, shutdown_notify_clone).await });
+
+    // Spawn poller for each polled value
+    spawn_poller::<Battery>(shutdowwn_notify.clone());
+    spawn_poller::<FanProfile>(shutdowwn_notify.clone());
+    spawn_poller::<Ram>(shutdowwn_notify.clone());
 
     // Handle sockets
     loop {
@@ -127,8 +114,6 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
 
                 // Spawn a task which handles this socket
                 let clients_clone = clients.clone();
-                // TODO Remove this
-                // let clients_tx_clone = clients_tx.clone();
                 let shutdown_notify_clone = shutdowwn_notify.clone();
                 tokio::spawn(async move { handle_socket(stream, clients_clone, shutdown_notify_clone).await });
             }

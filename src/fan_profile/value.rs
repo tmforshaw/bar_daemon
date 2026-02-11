@@ -8,8 +8,9 @@ use crate::{
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
     fan_profile::latest,
-    impl_into_snapshot_event, impl_monitored,
+    impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
+    polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
 };
 
@@ -69,6 +70,7 @@ pub struct FanProfile {
 
 impl_monitored!(FanProfile, fan_profile);
 impl_into_snapshot_event!(FanProfile);
+impl_polled!(FanProfile, fan_profile);
 
 impl FanProfile {
     #[must_use]
