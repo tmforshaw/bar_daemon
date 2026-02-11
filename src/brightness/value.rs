@@ -38,14 +38,6 @@ pub enum BrightnessSetCommands {
     },
 }
 
-#[derive(Subcommand)]
-pub enum BrightnessUpdateCommands {
-    #[command(alias = "mon", alias = "m")]
-    Monitor,
-    #[command(alias = "key", alias = "k")]
-    Keyboard,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum BrightnessItem {
     Monitor,
@@ -172,18 +164,6 @@ pub fn match_set_commands(commands: BrightnessSetCommands) -> DaemonMessage {
         BrightnessSetCommands::Keyboard { value } => DaemonMessage::Set {
             item: DaemonItem::Brightness(BrightnessItem::Keyboard),
             value,
-        },
-    }
-}
-
-#[must_use]
-pub const fn match_update_commands(commands: &BrightnessUpdateCommands) -> DaemonMessage {
-    match commands {
-        BrightnessUpdateCommands::Monitor => DaemonMessage::Update {
-            item: DaemonItem::Brightness(BrightnessItem::Monitor),
-        },
-        BrightnessUpdateCommands::Keyboard => DaemonMessage::Update {
-            item: DaemonItem::Brightness(BrightnessItem::Keyboard),
         },
     }
 }

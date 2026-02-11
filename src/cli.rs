@@ -3,14 +3,14 @@ use tracing::instrument;
 
 use crate::{
     battery::{self, BatteryGetCommands},
-    bluetooth::{self, BluetoothGetCommands, BluetoothSetCommands, BluetoothUpdateCommands},
-    brightness::{self, BrightnessGetCommands, BrightnessSetCommands, BrightnessUpdateCommands},
+    bluetooth::{self, BluetoothGetCommands, BluetoothSetCommands},
+    brightness::{self, BrightnessGetCommands, BrightnessSetCommands},
     daemon::{DaemonItem, DaemonMessage, do_daemon, send_daemon_messaage},
     error::DaemonError,
-    fan_profile::{self, FanProfileGetCommands, FanProfileSetCommands, FanProfileUpdateCommands},
+    fan_profile::{self, FanProfileGetCommands, FanProfileSetCommands},
     listener::listen,
     ram::{self, RamGetCommands},
-    volume::{self, VolumeGetCommands, VolumeSetCommands, VolumeUpdateCommands},
+    volume::{self, VolumeGetCommands, VolumeSetCommands},
 };
 
 #[derive(Parser)]
@@ -31,11 +31,6 @@ pub enum CliCommands {
     Set {
         #[command(subcommand)]
         commands: SetCommands,
-    },
-    #[command(alias = "u", alias = "up")]
-    Update {
-        #[command(subcommand)]
-        commands: UpdateCommands,
     },
     #[command(alias = "lis", alias = "l")]
     Listen,
@@ -71,38 +66,6 @@ pub enum SetCommands {
     FanProfile {
         #[command(subcommand)]
         commands: FanProfileSetCommands,
-    },
-}
-
-// Should be the same as SetCommands, but the subcommands shouldn't take values
-#[derive(Subcommand)]
-pub enum UpdateCommands {
-    #[command(alias = "vol", alias = "v")]
-    Volume {
-        #[command(subcommand)]
-        commands: VolumeUpdateCommands,
-    },
-    #[command(alias = "bri")]
-    Brightness {
-        #[command(subcommand)]
-        commands: BrightnessUpdateCommands,
-    },
-    #[command(alias = "blue", alias = "blu", alias = "bt")]
-    Bluetooth {
-        #[command(subcommand)]
-        commands: BluetoothUpdateCommands,
-    },
-    #[command(
-        alias = "fan",
-        alias = "profile",
-        alias = "f",
-        alias = "fp",
-        alias = "prof",
-        alias = "fanprof"
-    )]
-    FanProfile {
-        #[command(subcommand)]
-        commands: FanProfileUpdateCommands,
     },
 }
 
@@ -178,12 +141,6 @@ pub async fn evaluate_cli() -> Result<(), DaemonError> {
             SetCommands::Brightness { commands } => brightness::match_set_commands(commands),
             SetCommands::Bluetooth { commands } => bluetooth::match_set_commands(&commands),
             SetCommands::FanProfile { commands } => fan_profile::match_set_commands(commands),
-        },
-        CliCommands::Update { commands } => match commands {
-            UpdateCommands::Volume { commands } => volume::match_update_commands(&commands),
-            UpdateCommands::Brightness { commands } => brightness::match_update_commands(&commands),
-            UpdateCommands::Bluetooth { commands } => bluetooth::match_update_commands(&commands),
-            UpdateCommands::FanProfile { commands } => fan_profile::match_update_commands(&commands),
         },
         CliCommands::Listen => {
             listen().await?;

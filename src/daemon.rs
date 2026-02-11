@@ -31,7 +31,6 @@ pub const BUFFER_SIZE: usize = 1024;
 pub enum DaemonMessage {
     Set { item: DaemonItem, value: String },
     Get { item: DaemonItem },
-    Update { item: DaemonItem },
     Listen,
 }
 
@@ -155,59 +154,8 @@ pub async fn handle_socket(
                 let message: DaemonMessage = postcard::from_bytes(&buf[..n])?;
 
                 let reply = match message {
-                    DaemonMessage::Set { item, value }=> {
-                        // TODO remove this
-                        // // Broadcast which value has been updated
-                        // clients_tx.send(match item {
-                        //     DaemonItem::Volume(_) => ClientMessage::UpdateVolume,
-                        //     DaemonItem::Brightness(_) => ClientMessage::UpdateBrightness,
-                        //     DaemonItem::Bluetooth(_) => ClientMessage::UpdateBluetooth,
-                        //     DaemonItem::Battery(_) => ClientMessage::UpdateBattery,
-                        //     DaemonItem::Ram(_) => ClientMessage::UpdateRam,
-                        //     DaemonItem::FanProfile(_) => ClientMessage::UpdateFanProfile,
-                        //     DaemonItem::All => ClientMessage::UpdateAll,
-                        // })?;
-
-                        match_set_command(item.clone(), value.clone()).await?
-                    }
+                    DaemonMessage::Set { item, value }=>match_set_command(item.clone(), value.clone()).await?,
                     DaemonMessage::Get { item } => match_get_command(item.clone()).await?,
-                    DaemonMessage::Update {item} => {
-                        // TODO Remove this
-                        // // Broadcast which value has been updated
-                        // clients_tx.send(match item {
-                        //     DaemonItem::Volume(_) => {
-                        //         volume::notify().await?;
-
-                        //         ClientMessage::UpdateVolume
-                        //     },
-                        //     DaemonItem::Brightness(_) => {
-                        //         // TODO
-                        //         brightness::notify(MONITOR_ID).await?;
-                        //         brightness::notify(KEYBOARD_ID).await?;
-
-                        //         ClientMessage::UpdateBrightness
-                        //     },
-                        //     DaemonItem::Bluetooth(_) => {
-                        //         bluetooth::notify().await?;
-
-                        //         ClientMessage::UpdateBluetooth
-                        //     },
-                        //     DaemonItem::Battery(_) => {
-                        //         battery::notify(u32::MAX).await?;
-
-                        //         ClientMessage::UpdateBattery
-                        //     },
-                        //     DaemonItem::Ram(_) => ClientMessage::UpdateRam,
-                        //     DaemonItem::FanProfile(_) => {
-                        //         fan_profile::notify().await?;
-
-                        //         ClientMessage::UpdateFanProfile
-                        //     },
-                        //     DaemonItem::All => ClientMessage::UpdateAll,
-                        // })?;
-
-                        match_get_command(item.clone()).await?
-                    }
                     DaemonMessage::Listen => {
                         // Add the client writer and their uuid to clients
                         let client_id = Uuid::new_v4();

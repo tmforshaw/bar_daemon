@@ -5,8 +5,8 @@ use tracing::error;
 use value::FanState;
 
 pub use value::{
-    FanProfile, FanProfileGetCommands, FanProfileItem, FanProfileSetCommands, FanProfileUpdateCommands, evaluate_item,
-    match_get_commands, match_set_commands, match_update_commands, notify,
+    FanProfile, FanProfileGetCommands, FanProfileItem, FanProfileSetCommands, evaluate_item, match_get_commands,
+    match_set_commands, notify,
 };
 
 mod source;

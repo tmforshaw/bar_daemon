@@ -3,8 +3,7 @@ use source::{VolumeSource, default_source};
 
 use tracing::error;
 pub use value::{
-    Volume, VolumeGetCommands, VolumeItem, VolumeSetCommands, VolumeUpdateCommands, evaluate_item, match_get_commands,
-    match_set_commands, match_update_commands, notify,
+    Volume, VolumeGetCommands, VolumeItem, VolumeSetCommands, evaluate_item, match_get_commands, match_set_commands, notify,
 };
 
 mod source;

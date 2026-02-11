@@ -4,8 +4,8 @@ use source::{BrightnessSource, default_source};
 pub use source::{KEYBOARD_ID, MONITOR_ID};
 use tracing::error;
 pub use value::{
-    Brightness, BrightnessGetCommands, BrightnessItem, BrightnessSetCommands, BrightnessUpdateCommands, evaluate_item,
-    match_get_commands, match_set_commands, match_update_commands, notify,
+    Brightness, BrightnessGetCommands, BrightnessItem, BrightnessSetCommands, evaluate_item, match_get_commands,
+    match_set_commands, notify,
 };
 
 mod source;
