@@ -9,6 +9,7 @@ use crate::{
     monitored::{Monitored, MonitoredUpdate},
     observed::Observed::{self, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
+    tuples::ToTuples,
 };
 
 use super::{VolumeSource, default_source, latest};
@@ -86,13 +87,18 @@ impl Volume {
             }
         )
     }
+}
+
+impl ToTuples for Volume {
+    fn to_tuple_names() -> Vec<String> {
+        vec!["percent".to_string(), "mute_state".to_string(), "icon".to_string()]
+    }
 
     /// # Errors
     /// Errors are turned into `String` and set as value of `percent` then returned as an `Ok()`
     /// Returns an error if values in the output of the command cannot be parsed
-    #[must_use]
     #[instrument]
-    pub fn to_tuples(&self) -> Vec<(String, String)> {
+    fn to_tuples(&self) -> Vec<(String, String)> {
         // Create list of values for tuples
         let str_values = {
             let Self { percent, mute } = self;
@@ -102,10 +108,7 @@ impl Volume {
         };
 
         // Zip list of values with list of value names
-        vec!["percent".to_string(), "mute_state".to_string(), "icon".to_string()]
-            .into_iter()
-            .zip(str_values)
-            .collect::<Vec<_>>()
+        Self::to_tuple_names().into_iter().zip(str_values).collect::<Vec<_>>()
     }
 }
 
@@ -114,8 +117,7 @@ impl Volume {
 /// Returns an error if notification command could not be run
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> {
-    // Only create notification if the update changed something
-    if update.old != Valid(update.clone().new) {
+    fn do_notification(new: Volume) -> Result<(), DaemonError> {
         command::run(
             "dunstify",
             &[
@@ -124,14 +126,41 @@ pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> 
                 "-r",
                 format!("{NOTIFICATION_ID}").as_str(),
                 "-i",
-                update.new.get_icon().trim(),
+                new.get_icon().trim(),
                 "-t",
                 get_config().notification_timeout.to_string().as_str(),
                 "-h",
-                format!("int:value:{}", update.new.percent).as_str(),
+                format!("int:value:{}", new.percent).as_str(),
                 "Volume: ",
             ],
         )?;
+
+        Ok(())
+    }
+
+    fn do_notification_unavailable() -> Result<(), DaemonError> {
+        command::run(
+            "dunstify",
+            &[
+                "-u",
+                "normal",
+                "-r",
+                format!("{NOTIFICATION_ID}").as_str(),
+                "-t",
+                get_config().notification_timeout.to_string().as_str(),
+                "Volume Unavailable",
+            ],
+        )?;
+
+        Ok(())
+    }
+    // Only create notification if the update changed something
+    if update.old != update.new {
+        // If the new values are valid
+        match update.new {
+            Valid(new) => do_notification(new)?,
+            Unavailable => do_notification_unavailable()?,
+        }
     }
 
     Ok(())

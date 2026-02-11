@@ -13,6 +13,7 @@ use crate::{
     monitored::{Monitored, MonitoredUpdate},
     observed::Observed::{self, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
+    tuples::ToTuples,
 };
 
 use super::{BluetoothSource, default_source, latest};
@@ -54,14 +55,18 @@ impl Bluetooth {
     pub fn get_icon(&self) -> String {
         format!("bluetooth-{}{ICON_END}", if self.state { "active" } else { "disabled" })
     }
+}
 
+impl ToTuples for Bluetooth {
+    fn to_tuple_names() -> Vec<String> {
+        vec!["state".to_string(), "icon".to_string()]
+    }
     /// # Errors
     /// Errors are turned into `String` and set as value of `state` then returned as an `Ok()`
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
-    #[must_use]
     #[instrument]
-    pub fn to_tuples(&self) -> Vec<(String, String)> {
+    fn to_tuples(&self) -> Vec<(String, String)> {
         // Create list of values for tuples
         let str_values = {
             let icon = self.get_icon();
@@ -70,10 +75,7 @@ impl Bluetooth {
         };
 
         // Zip list of values with list of value names
-        vec!["state".to_string(), "icon".to_string()]
-            .into_iter()
-            .zip(str_values)
-            .collect::<Vec<_>>()
+        Self::to_tuple_names().into_iter().zip(str_values).collect::<Vec<_>>()
     }
 }
 
@@ -82,8 +84,7 @@ impl Bluetooth {
 /// Returns an error if notification command could not be run
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonError> {
-    // Only create notification if the update changed something
-    if update.old != Valid(update.clone().new) {
+    fn do_notification(new: Bluetooth) -> Result<(), DaemonError> {
         command::run(
             "dunstify",
             &[
@@ -92,12 +93,40 @@ pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonErro
                 "-r",
                 format!("{NOTIFICATION_ID}").as_str(),
                 "-i",
-                update.new.get_icon().trim(),
+                new.get_icon().trim(),
                 "-t",
                 get_config().notification_timeout.to_string().as_str(),
-                format!("Bluetooth: {}", if update.new.state { "on" } else { "off" }).as_str(),
+                format!("Bluetooth: {}", if new.state { "on" } else { "off" }).as_str(),
             ],
         )?;
+
+        Ok(())
+    }
+
+    fn do_notification_unavailable() -> Result<(), DaemonError> {
+        command::run(
+            "dunstify",
+            &[
+                "-u",
+                "normal",
+                "-r",
+                format!("{NOTIFICATION_ID}").as_str(),
+                "-t",
+                get_config().notification_timeout.to_string().as_str(),
+                format!("Bluetooth Unavailable").as_str(),
+            ],
+        )?;
+
+        Ok(())
+    }
+
+    // Only create notification if the update changed something
+    if update.old != update.new {
+        // If the new values are valid
+        match update.new {
+            Valid(new) => do_notification(new)?,
+            Unavailable => do_notification_unavailable()?,
+        }
     }
 
     Ok(())

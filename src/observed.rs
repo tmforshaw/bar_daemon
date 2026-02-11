@@ -1,16 +1,31 @@
 use Observed::{Unavailable, Valid};
 
+use crate::{monitored::Monitored, tuples::ToTuples};
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Observed<T> {
     Valid(T),
     Unavailable,
 }
 
-impl<T: ToString> From<Observed<T>> for String {
-    fn from(value: Observed<T>) -> Self {
-        match value {
-            Observed::Valid(v) => v.to_string(),
-            Observed::Unavailable => Self::from("?"),
+impl<T: ToTuples> Observed<T> {
+    pub fn to_tuples(self) -> Vec<(String, String)> {
+        match self {
+            Valid(v) => v.to_tuples(),
+            Unavailable => {
+                // Generate a fake tuple with "?" instead of real data
+                let tuple_names = T::to_tuple_names();
+                tuple_names.into_iter().map(|name| (name, String::from("?"))).collect()
+            }
+        }
+    }
+}
+
+impl<T: std::fmt::Debug> std::fmt::Display for Observed<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Observed::Valid(v) => write!(f, "{v:?}"),
+            Observed::Unavailable => write!(f, "?"),
         }
     }
 }

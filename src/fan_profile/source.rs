@@ -3,6 +3,7 @@ use tracing::instrument;
 use crate::{
     command,
     error::DaemonError,
+    fan_profile,
     snapshot::{current_snapshot, update_snapshot},
 };
 
@@ -59,7 +60,10 @@ impl FanProfileSource for AsusctlFanProfile {
         let profile = get_asusctl_profile()?;
 
         // Update snapshot
-        let _update = update_snapshot(FanProfile { profile }).await;
+        let update = update_snapshot(FanProfile { profile }).await;
+
+        // Do a notification
+        fan_profile::notify(update).await?;
 
         Ok(profile)
     }
@@ -99,13 +103,17 @@ impl FanProfileSource for AsusctlFanProfile {
             }
         };
 
+        // Set the profile using asusctl
         command::run("asusctl", &["profile", "set", new_profile])?;
 
         // Update snapshot
-        let _update = update_snapshot(FanProfile {
+        let update = update_snapshot(FanProfile {
             profile: new_profile_idx.into(),
         })
         .await;
+
+        // Do a notification
+        fan_profile::notify(update).await?;
 
         Ok(())
     }

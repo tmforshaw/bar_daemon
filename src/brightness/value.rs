@@ -11,6 +11,7 @@ use crate::{
     monitored::{Monitored, MonitoredUpdate},
     observed::Observed::{self, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
+    tuples::ToTuples,
 };
 
 use super::{BrightnessSource, MONITOR_ID, default_source, latest};
@@ -87,23 +88,25 @@ impl Brightness {
             )
         }
     }
+}
+
+impl ToTuples for Brightness {
+    fn to_tuple_names() -> Vec<String> {
+        vec!["monitor_percent".to_string(), "icon".to_string()]
+    }
 
     /// # Errors
     /// Errors are turned into `String` and set as value of `monitor_percent` then returned as an `Ok()`
     /// Returns an error if values in the output of the command cannot be parsed
-    #[must_use]
     #[instrument]
-    pub fn to_tuples(&self) -> Vec<(String, String)> {
+    fn to_tuples(&self) -> Vec<(String, String)> {
         let str_values = {
             let icon = self.get_icon(MONITOR_ID);
 
             vec![self.monitor.to_string(), format!("{icon}{ICON_EXT}")]
         };
 
-        vec!["monitor_percent".to_string(), "icon".to_string()]
-            .into_iter()
-            .zip(str_values)
-            .collect::<Vec<_>>()
+        Self::to_tuple_names().into_iter().zip(str_values).collect::<Vec<_>>()
     }
 }
 
@@ -111,16 +114,7 @@ impl Brightness {
 /// Returns an error if the requested value could not be parsed
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Result<(), DaemonError> {
-    // If the update changed something
-    if update.old != Valid(update.clone().new) {
-        // Select the percent of the device which is being notified
-        let percent = if device_id == MONITOR_ID {
-            update.new.monitor
-        } else {
-            update.new.keyboard
-        };
-
-        // Create a notification
+    fn do_notification(new: Brightness, device_id: &str) -> Result<(), DaemonError> {
         command::run(
             "dunstify",
             &[
@@ -129,14 +123,47 @@ pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Res
                 "-r",
                 format!("{NOTIFICATION_ID}").as_str(),
                 "-i",
-                update.new.get_icon(device_id).trim(),
+                new.get_icon(device_id).trim(),
                 "-t",
                 get_config().notification_timeout.to_string().as_str(),
                 "-h",
-                format!("int:value:{percent}").as_str(),
+                // Select the percent of the device which is being notified
+                format!(
+                    "int:value:{}",
+                    if device_id == MONITOR_ID { new.monitor } else { new.keyboard }
+                )
+                .as_str(),
                 format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
             ],
         )?;
+
+        Ok(())
+    }
+
+    fn do_notification_unavailable(device_id: &str) -> Result<(), DaemonError> {
+        command::run(
+            "dunstify",
+            &[
+                "-u",
+                "normal",
+                "-r",
+                format!("{NOTIFICATION_ID}").as_str(),
+                "-t",
+                get_config().notification_timeout.to_string().as_str(),
+                format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
+            ],
+        )?;
+
+        Ok(())
+    }
+
+    // If the update changed something
+    if update.old != update.new {
+        // If the new values are valid
+        match update.new {
+            Valid(new) => do_notification(new, device_id)?,
+            Unavailable => do_notification_unavailable(device_id)?,
+        }
     }
 
     Ok(())

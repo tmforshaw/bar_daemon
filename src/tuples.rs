@@ -111,3 +111,9 @@ async fn get_all_tuples_inner() -> Result<Vec<TupleNameWithTuples>, DaemonError>
     // Execute the futures concurrently to get the tuples
     futures::future::try_join_all(futures).await
 }
+
+pub trait ToTuples {
+    #[must_use]
+    fn to_tuple_names() -> Vec<String>;
+    fn to_tuples(&self) -> Vec<(String, String)>;
+}

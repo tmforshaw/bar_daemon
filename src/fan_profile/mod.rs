@@ -1,12 +1,12 @@
 use crate::error::DaemonError;
+use tracing::error;
 
 use source::{FAN_STATE_STRINGS, FanProfileSource, default_source};
-use tracing::error;
-use value::FanState;
+use value::{FanState, notify};
 
 pub use value::{
     FanProfile, FanProfileGetCommands, FanProfileItem, FanProfileSetCommands, evaluate_item, match_get_commands,
-    match_set_commands, notify,
+    match_set_commands,
 };
 
 mod source;

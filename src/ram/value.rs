@@ -11,6 +11,7 @@ use crate::{
     observed::Observed::{self, Unavailable, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
+    tuples::ToTuples,
 };
 
 use super::{RamSource, default_source, latest};
@@ -52,13 +53,23 @@ impl Ram {
     pub fn get_icon() -> String {
         format!("nvidia-ram{ICON_END}")
     }
+}
+
+impl ToTuples for Ram {
+    fn to_tuple_names() -> Vec<String> {
+        vec![
+            "total".to_string(),
+            "used".to_string(),
+            "percent".to_string(),
+            "icon".to_string(),
+        ]
+    }
 
     /// # Errors
     /// Errors are turned into `String` and set as value of `total` then returned as an `Ok()`
     /// Returns an error if the requested value could not be parsed
-    #[must_use]
     #[instrument]
-    pub fn to_tuples(&self) -> Vec<(String, String)> {
+    fn to_tuples(&self) -> Vec<(String, String)> {
         let icon = Self::get_icon();
 
         // Create list of values for tuples
@@ -74,15 +85,7 @@ impl Ram {
         };
 
         // Zip list of values with list of value names
-        vec![
-            "total".to_string(),
-            "used".to_string(),
-            "percent".to_string(),
-            "icon".to_string(),
-        ]
-        .into_iter()
-        .zip(str_values)
-        .collect::<Vec<_>>()
+        Self::to_tuple_names().into_iter().zip(str_values).collect::<Vec<_>>()
     }
 }
 
