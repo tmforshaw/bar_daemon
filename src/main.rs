@@ -10,7 +10,7 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::implicit_hasher)]
 
-// TODO Re-add the soft errors back in so that errors can easily be found
+// TODO Re-add the soft errors back in so that errors can easily be found, and don't crash the listener
 // TODO Add notifications of change in values back (Probably in update_monitored or update_snapshot)
 
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
