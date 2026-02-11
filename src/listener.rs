@@ -113,8 +113,8 @@ pub async fn handle_clients(
                     // Broadcast to each client
                     let mut to_remove = vec![];
                     for (id, client) in clients.lock().await.iter_mut() {
-                        if let Err(e) = client.stream.try_write(json.as_bytes()) {
-                            error!("Write failed for {id}: {e}");
+                        if client.stream.try_write(json.as_bytes()).is_err() {
+                            info!("Client {id} disconnected");
                             to_remove.push(*id);
                         }
                     }
