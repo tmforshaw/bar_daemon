@@ -5,7 +5,7 @@ use tokio::{
     net::UnixStream,
     sync::{Mutex, Notify, broadcast},
 };
-use tracing::{error, info, instrument};
+use tracing::{debug, error, info, instrument};
 use uuid::Uuid;
 
 use crate::{
@@ -87,7 +87,7 @@ pub async fn handle_clients(
                 let clients_empty = clients.lock().await.is_empty();
 
                 if !clients_empty {
-                    info!("SnapshotEvent Received: {event:?}");
+                    debug!("SnapshotEvent Received: {event:?}");
 
                     let (index, new_tuples) = match event {
                         SnapshotEvent::Battery(update) => (TupleName::Battery as usize, update.new.to_tuples()),
