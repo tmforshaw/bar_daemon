@@ -109,33 +109,34 @@ impl Brightness {
 /// # Errors
 /// Returns an error if the requested value could not be parsed
 #[instrument]
-pub async fn notify(device_id: &str) -> Result<(), DaemonError> {
-    let brightness = current_snapshot().await.brightness.unwrap_or(latest().await?);
+pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Result<(), DaemonError> {
+    // If the update changed something
+    if update.old != Some(update.clone().new) {
+        // Select the percent of the device which is being notified
+        let percent = if device_id == MONITOR_ID {
+            update.new.monitor
+        } else {
+            update.new.keyboard
+        };
 
-    let percent = if device_id == MONITOR_ID {
-        brightness.monitor
-    } else {
-        brightness.keyboard
-    };
-
-    let icon = brightness.get_icon(device_id);
-
-    command::run(
-        "dunstify",
-        &[
-            "-u",
-            "normal",
-            "-r",
-            format!("{NOTIFICATION_ID}").as_str(),
-            "-i",
-            icon.as_str(),
-            "-t",
-            get_config().notification_timeout.to_string().as_str(),
-            "-h",
-            format!("int:value:{percent}").as_str(),
-            format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
-        ],
-    )?;
+        // Create a notification
+        command::run(
+            "dunstify",
+            &[
+                "-u",
+                "normal",
+                "-r",
+                format!("{NOTIFICATION_ID}").as_str(),
+                "-i",
+                update.new.get_icon(device_id).trim(),
+                "-t",
+                get_config().notification_timeout.to_string().as_str(),
+                "-h",
+                format!("int:value:{percent}").as_str(),
+                format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
+            ],
+        )?;
+    }
 
     Ok(())
 }

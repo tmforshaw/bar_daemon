@@ -4,7 +4,7 @@ use tracing::instrument;
 
 use super::value::{Battery, BatteryState};
 use crate::{
-    command,
+    battery, command,
     error::DaemonError,
     snapshot::{current_snapshot, update_snapshot},
 };
@@ -48,7 +48,10 @@ impl BatterySource for AcpiBattery {
         };
 
         // Update current snapshot
-        let _update = update_snapshot(battery.clone()).await;
+        let update = update_snapshot(battery.clone()).await;
+
+        // Perform notification checks and create notification if needed
+        battery::notify(update).await?;
 
         Ok(battery)
     }
@@ -63,7 +66,10 @@ impl BatterySource for AcpiBattery {
 
         // Update current snapshot
         let battery = current_snapshot().await.battery.unwrap_or_default();
-        let _update = update_snapshot(Battery { state, ..battery }).await;
+        let update = update_snapshot(Battery { state, ..battery }).await;
+
+        // Perform notification checks and create notification if needed
+        battery::notify(update).await?;
 
         Ok(state)
     }
@@ -78,7 +84,10 @@ impl BatterySource for AcpiBattery {
 
         // Update current snapshot
         let battery = current_snapshot().await.battery.unwrap_or_default();
-        let _update = update_snapshot(Battery { percent, ..battery }).await;
+        let update = update_snapshot(Battery { percent, ..battery }).await;
+
+        // Perform notification checks and create notification if needed
+        battery::notify(update).await?;
 
         Ok(percent)
     }
@@ -93,11 +102,14 @@ impl BatterySource for AcpiBattery {
 
         // Update current snapshot
         let battery = current_snapshot().await.battery.unwrap_or_default();
-        let _update = update_snapshot(Battery {
+        let update = update_snapshot(Battery {
             time: time.clone(),
             ..battery
         })
         .await;
+
+        // Perform notification checks and create notification if needed
+        battery::notify(update).await?;
 
         Ok(time)
     }

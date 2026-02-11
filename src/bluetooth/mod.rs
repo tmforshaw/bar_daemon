@@ -1,11 +1,12 @@
 use crate::error::DaemonError;
+use tracing::error;
+
 use source::BluetoothSource;
+use value::notify;
 
 pub use source::default_source;
-use tracing::error;
 pub use value::{
     Bluetooth, BluetoothGetCommands, BluetoothItem, BluetoothSetCommands, evaluate_item, match_get_commands, match_set_commands,
-    notify,
 };
 
 mod source;

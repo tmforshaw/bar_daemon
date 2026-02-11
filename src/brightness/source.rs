@@ -4,12 +4,12 @@ use itertools::Itertools;
 use tracing::instrument;
 
 use crate::{
-    command,
+    brightness, command,
     error::DaemonError,
     snapshot::{current_snapshot, update_snapshot},
 };
 
-use super::{Brightness, notify};
+use super::Brightness;
 
 pub const MONITOR_ID: &str = "nvidia_wmi_ec_backlight";
 pub const KEYBOARD_ID: &str = "asus::kbd_backlight";
@@ -107,16 +107,15 @@ impl BrightnessSource for BctlBrightness {
 
         let new_monitor = latest().await?.monitor;
 
-        if prev_brightness.monitor.partial_cmp(&new_monitor) != Some(std::cmp::Ordering::Equal) {
-            notify(MONITOR_ID).await?;
-        }
-
         // Update snapshot
-        let _update = update_snapshot(Brightness {
+        let update = update_snapshot(Brightness {
             monitor: new_monitor,
             ..prev_brightness
         })
         .await;
+
+        // Do a notification
+        brightness::notify(update, MONITOR_ID).await?;
 
         Ok(())
     }
@@ -132,16 +131,15 @@ impl BrightnessSource for BctlBrightness {
 
         let new_keyboard = latest().await?.keyboard;
 
-        if prev_brightness.keyboard.partial_cmp(&new_keyboard) != Some(std::cmp::Ordering::Equal) {
-            notify(KEYBOARD_ID).await?;
-        }
-
         // Update snapshot
-        let _update = update_snapshot(Brightness {
+        let update = update_snapshot(Brightness {
             keyboard: new_keyboard,
             ..prev_brightness
         })
         .await;
+
+        // Do a notification
+        brightness::notify(update, KEYBOARD_ID).await?;
 
         Ok(())
     }

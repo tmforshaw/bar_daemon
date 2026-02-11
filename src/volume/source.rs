@@ -137,10 +137,8 @@ impl VolumeSource for WpctlVolume {
         })
         .await;
 
-        // Do a notification if the value changed
-        if update.old != Some(update.new) {
-            volume::notify().await?;
-        }
+        // Do a notification
+        volume::notify(update).await?;
 
         // Set the volume internally as a logarithmic value
         let logarithmic_percent = linear_to_logarithmic(f64::from(linear_percent));
@@ -181,10 +179,8 @@ impl VolumeSource for WpctlVolume {
         })
         .await;
 
-        // Do a notification if the value changed
-        if update.old != Some(update.new) {
-            volume::notify().await?;
-        }
+        // Do a notification
+        volume::notify(update).await?;
 
         Ok(())
     }

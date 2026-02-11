@@ -1,7 +1,7 @@
 use tracing::instrument;
 
 use crate::{
-    command,
+    bluetooth, command,
     error::DaemonError,
     snapshot::{current_snapshot, update_snapshot},
 };
@@ -86,7 +86,10 @@ impl BluetoothSource for BluezBluetooth {
         command::run("bluetooth", &[state])?;
 
         // Change the value within the snapshot
-        let _update = update_snapshot(Bluetooth { state: new_state }).await;
+        let update = update_snapshot(Bluetooth { state: new_state }).await;
+
+        // Do a notification
+        bluetooth::notify(update).await?;
 
         Ok(())
     }

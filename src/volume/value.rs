@@ -112,29 +112,26 @@ impl Volume {
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
 #[instrument]
-pub async fn notify() -> Result<(), DaemonError> {
-    // Get the current volume from the state
-    let volume = current_snapshot().await.volume.unwrap_or(latest().await?);
-
-    let percent = volume.percent;
-    let icon = volume.get_icon();
-
-    command::run(
-        "dunstify",
-        &[
-            "-u",
-            "normal",
-            "-r",
-            format!("{NOTIFICATION_ID}").as_str(),
-            "-i",
-            icon.trim().to_string().as_str(),
-            "-t",
-            get_config().notification_timeout.to_string().as_str(),
-            "-h",
-            format!("int:value:{percent}").as_str(),
-            "Volume: ",
-        ],
-    )?;
+pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> {
+    // Only create notification if the update changed something
+    if update.old != Some(update.clone().new) {
+        command::run(
+            "dunstify",
+            &[
+                "-u",
+                "normal",
+                "-r",
+                format!("{NOTIFICATION_ID}").as_str(),
+                "-i",
+                update.new.get_icon().trim(),
+                "-t",
+                get_config().notification_timeout.to_string().as_str(),
+                "-h",
+                format!("int:value:{}", update.new.percent).as_str(),
+                "Volume: ",
+            ],
+        )?;
+    }
 
     Ok(())
 }
@@ -148,17 +145,12 @@ pub async fn evaluate_item(
     value: Option<String>,
 ) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
-        // Get the current volume before the change
-        let prev_volume_obj = current_snapshot().await.volume.unwrap_or(latest().await?);
-
         // Set value
         match volume_item {
             VolumeItem::Percent => default_source().set_percent(value.as_str()).await?,
             VolumeItem::Mute => default_source().set_mute(value.as_str()).await?,
             _ => {}
         }
-
-        let new_volume_obj = latest().await?;
 
         DaemonReply::Value { item, value }
     } else {

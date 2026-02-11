@@ -80,25 +80,24 @@ impl Bluetooth {
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
 #[instrument]
-pub async fn notify() -> Result<(), DaemonError> {
-    let bluetooth = current_snapshot().await.bluetooth.unwrap_or(latest().await?);
-
-    let icon = bluetooth.get_icon();
-
-    command::run(
-        "dunstify",
-        &[
-            "-u",
-            "normal",
-            "-r",
-            format!("{NOTIFICATION_ID}").as_str(),
-            "-i",
-            icon.trim().to_string().as_str(),
-            "-t",
-            get_config().notification_timeout.to_string().as_str(),
-            format!("Bluetooth: {}", if bluetooth.state { "on" } else { "off" }).as_str(),
-        ],
-    )?;
+pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonError> {
+    // Only create notification if the update changed something
+    if update.old != Some(update.clone().new) {
+        command::run(
+            "dunstify",
+            &[
+                "-u",
+                "normal",
+                "-r",
+                format!("{NOTIFICATION_ID}").as_str(),
+                "-i",
+                update.new.get_icon().trim(),
+                "-t",
+                get_config().notification_timeout.to_string().as_str(),
+                format!("Bluetooth: {}", if update.new.state { "on" } else { "off" }).as_str(),
+            ],
+        )?;
+    }
 
     Ok(())
 }
@@ -111,18 +110,9 @@ pub async fn evaluate_item(
     value: Option<String>,
 ) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
-        let prev_state = current_snapshot().await.bluetooth.unwrap_or(latest().await?);
-
         // Set value
         if bluetooth_item == &BluetoothItem::State {
             default_source().set_state(value.as_str()).await?;
-        }
-
-        let new_state = latest().await?;
-
-        if prev_state != new_state {
-            // Do a notification
-            notify().await?;
         }
 
         DaemonReply::Value { item, value }

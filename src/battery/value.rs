@@ -17,7 +17,7 @@ use crate::{
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
     polled::Polled,
-    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
+    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent},
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
@@ -52,12 +52,13 @@ pub enum BatteryItem {
 
 const BAT_STATE_STRINGS: &[&str] = &["Fully Charged", "Charging", "Discharging", "Not Charging"];
 const BAT_LOW_NOTIFY_THRESHOLDS: &[u32] = &[20, 15, 10, 5];
-const BAT_HIGH_NOTIFY_THRESHOLD: u32 = 100;
+const BAT_HIGH_NOTIFY_THRESHOLD: u32 = 80;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct BatteryNotifyState {
-    low_notified: [bool; BAT_LOW_NOTIFY_THRESHOLDS.len()],
-    full_notified: bool,
+    low: [bool; BAT_LOW_NOTIFY_THRESHOLDS.len()],
+    high: bool,
+    not_charging: bool,
 }
 
 static BAT_NOTIFY_STATE: LazyLock<RwLock<BatteryNotifyState>> = LazyLock::new(|| RwLock::new(BatteryNotifyState::default()));
@@ -128,26 +129,74 @@ impl Battery {
 /// Returns an error if `CURRENT_SNAPSHOT` could not be read
 /// Returns an error if notification command could not be run
 #[instrument]
-pub async fn notify(prev_percent: u32) -> Result<(), DaemonError> {
-    // Get Battery from snapshot, unless uninitialised then read the current value
-    let battery = current_snapshot().await.battery.unwrap_or(default_source().read().await?);
+pub async fn notify(update: MonitoredUpdate<Battery>) -> Result<(), DaemonError> {
+    fn do_notification(battery: &Battery) -> Result<(), DaemonError> {
+        command::run(
+            "dunstify",
+            &[
+                "-u",
+                "-normal",
+                "-t",
+                get_config().notification_timeout.to_string().as_str(),
+                "-i",
+                battery.get_icon().as_str(),
+                "-r",
+                NOTIFICATION_ID.to_string().as_str(),
+                "-h",
+                format!("int:value:{}", battery.percent).as_str(),
+                "Battery: ",
+            ],
+        )?;
 
-    // command::run(
-    //     "dunstify",
-    //     &[
-    //         "-u",
-    //         "-normal",
-    //         "-t",
-    //         get_config().notification_timeout.to_string().as_str(),
-    //         "-i",
-    //         battery.get_icon().as_str(),
-    //         "-r",
-    //         NOTIFICATION_ID.to_string().as_str(),
-    //         "-h",
-    //         format!("int:value:{current_percent}").as_str(),
-    //         "Battery: ",
-    //     ],
-    // )?;
+        Ok(())
+    }
+
+    // Only perform checks if the update changed something
+    if update.old != Some(update.clone().new) {
+        // The state changed in this update
+        if update.old.is_none_or(|old| old.state != update.new.state) {
+            // Mark all notifications as non-completed
+            *(BAT_NOTIFY_STATE.write().await) = BatteryNotifyState::default();
+        }
+
+        // Check to see if any of the desired threhsolds have been reached for the first time
+        let notify_state = BAT_NOTIFY_STATE.read().await.clone();
+        match update.new.state {
+            BatteryState::Charging | BatteryState::FullyCharged => {
+                // Check if the high threshold has just been reached for the first time
+                if update.new.percent >= BAT_HIGH_NOTIFY_THRESHOLD && !notify_state.high {
+                    // Mark high threshold as complete
+                    BAT_NOTIFY_STATE.write().await.high = true;
+
+                    // Perform the notification
+                    do_notification(&update.new)?;
+                }
+            }
+            BatteryState::Discharging => {
+                // Check each of the thresholds to see if it was just reached for the first time
+                for (i, &threshold) in BAT_LOW_NOTIFY_THRESHOLDS.iter().enumerate() {
+                    // The threshold was crossed and hasn't been crossed before
+                    if update.new.percent <= threshold && !notify_state.low[i] {
+                        // Mark this threshold as complete
+                        BAT_NOTIFY_STATE.write().await.low[i] = true;
+
+                        // Perform the notification
+                        do_notification(&update.new)?;
+                    }
+                }
+            }
+            BatteryState::NotCharging => {
+                // If this hasn't caused a notification already
+                if !notify_state.not_charging {
+                    // Mark not charging notification as complete
+                    BAT_NOTIFY_STATE.write().await.not_charging = true;
+
+                    // Perform the notification
+                    do_notification(&update.new)?;
+                }
+            }
+        }
+    }
 
     Ok(())
 }
