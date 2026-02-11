@@ -1,8 +1,10 @@
 use crate::error::DaemonError;
+use tracing::{error, instrument};
 
 use source::{BatterySource, default_source};
-use tracing::{error, instrument};
-pub use value::{Battery, BatteryGetCommands, BatteryItem, evaluate_item, match_get_commands, notify};
+use value::notify;
+
+pub use value::{Battery, BatteryGetCommands, BatteryItem, evaluate_item, match_get_commands};
 
 mod source;
 mod value;

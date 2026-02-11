@@ -1,11 +1,13 @@
 use crate::error::DaemonError;
+use tracing::error;
+
 use source::{BrightnessSource, default_source};
+use value::notify;
 
 pub use source::{KEYBOARD_ID, MONITOR_ID};
-use tracing::error;
 pub use value::{
     Brightness, BrightnessGetCommands, BrightnessItem, BrightnessSetCommands, evaluate_item, match_get_commands,
-    match_set_commands, notify,
+    match_set_commands,
 };
 
 mod source;

@@ -160,11 +160,6 @@ pub async fn evaluate_item(
 
         let new_volume_obj = latest().await?;
 
-        if prev_volume_obj != new_volume_obj {
-            // Do a notification
-            notify().await?;
-        }
-
         DaemonReply::Value { item, value }
     } else {
         // Get value (use current_snapshot since this won't change without bar_daemon changing it) (Use latest when current_snapshot is empty)

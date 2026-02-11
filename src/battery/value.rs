@@ -1,5 +1,8 @@
+use std::sync::LazyLock;
+
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 use tracing::instrument;
 
 use super::{default_source, latest};
@@ -48,7 +51,16 @@ pub enum BatteryItem {
 }
 
 const BAT_STATE_STRINGS: &[&str] = &["Fully Charged", "Charging", "Discharging", "Not Charging"];
-const BAT_NOTIFY_VALUES: &[u32] = &[5, 15, 20, 30];
+const BAT_LOW_NOTIFY_THRESHOLDS: &[u32] = &[20, 15, 10, 5];
+const BAT_HIGH_NOTIFY_THRESHOLD: u32 = 100;
+
+#[derive(Debug, Default)]
+struct BatteryNotifyState {
+    low_notified: [bool; BAT_LOW_NOTIFY_THRESHOLDS.len()],
+    full_notified: bool,
+}
+
+static BAT_NOTIFY_STATE: LazyLock<RwLock<BatteryNotifyState>> = LazyLock::new(|| RwLock::new(BatteryNotifyState::default()));
 
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Battery {
@@ -120,30 +132,22 @@ pub async fn notify(prev_percent: u32) -> Result<(), DaemonError> {
     // Get Battery from snapshot, unless uninitialised then read the current value
     let battery = current_snapshot().await.battery.unwrap_or(default_source().read().await?);
 
-    let current_percent = battery.percent;
-
-    if current_percent < prev_percent && battery.state == BatteryState::Discharging {
-        for &value in BAT_NOTIFY_VALUES.iter().rev() {
-            if current_percent == value {
-                command::run(
-                    "dunstify",
-                    &[
-                        "-u",
-                        "-normal",
-                        "-t",
-                        get_config().notification_timeout.to_string().as_str(),
-                        "-i",
-                        battery.get_icon().as_str(),
-                        "-r",
-                        NOTIFICATION_ID.to_string().as_str(),
-                        "-h",
-                        format!("int:value:{current_percent}").as_str(),
-                        "Battery: ",
-                    ],
-                )?;
-            }
-        }
-    }
+    // command::run(
+    //     "dunstify",
+    //     &[
+    //         "-u",
+    //         "-normal",
+    //         "-t",
+    //         get_config().notification_timeout.to_string().as_str(),
+    //         "-i",
+    //         battery.get_icon().as_str(),
+    //         "-r",
+    //         NOTIFICATION_ID.to_string().as_str(),
+    //         "-h",
+    //         format!("int:value:{current_percent}").as_str(),
+    //         "Battery: ",
+    //     ],
+    // )?;
 
     Ok(())
 }
