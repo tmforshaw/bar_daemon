@@ -11,11 +11,11 @@ use crate::{config::get_config, error::DaemonError};
 pub fn init_logging() {
     // Set panic hook
     std::panic::set_hook(Box::new(|info| {
-        error!("panic: {info}");
+        error!("Panic: {info}");
     }));
 
     // Filter the logs to the specified level (Use TRACE as default)
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("trace"));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     // Access the log file and begin to add logs
     let log_file = OpenOptions::new()

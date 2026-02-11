@@ -1,4 +1,4 @@
-use tracing::{info, instrument};
+use tracing::{debug, instrument};
 
 use crate::snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event};
 
@@ -27,7 +27,7 @@ pub fn update_monitored<M: Monitored + IntoSnapshotEvent>(snapshot: &mut Snapsho
     // Check that the update changed the data
     if update.old != Some(update.new.clone()) {
         // Log the update
-        info!("Monitored Value Updated: {update:?}");
+        debug!("Monitored Value Updated: {update:?}");
 
         // Broadcast update
         broadcast_snapshot_event(M::into_event(update.clone()));
