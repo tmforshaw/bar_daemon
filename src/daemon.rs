@@ -76,7 +76,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
     tokio::pin!(shutdown);
 
     // Create Notify for broadcasting shutdown to all tasks
-    let notify = Arc::new(Notify::new());
+    let shutdowwn_notify = Arc::new(Notify::new());
 
     // Create new UnixListener at SOCKET_PATH
     let listener = UnixListener::bind(SOCKET_PATH)?;
@@ -89,19 +89,19 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
 
     // Spawn a task which handles listener clients
     let clients_clone = clients.clone();
-    let notify_clone = notify.clone();
+    let notify_clone = shutdowwn_notify.clone();
     tokio::spawn(async move { handle_clients(clients_clone, &mut clients_rx, notify_clone).await });
 
     // Create a task which polls the state of certain values
     let clients_clone = clients.clone();
     let clients_tx_clone = clients_tx.clone();
 
-    let notify_clone = notify.clone();
+    let shutdown_notify_clone = shutdowwn_notify.clone();
     tokio::spawn(async move {
         loop {
             tokio::select! {
                 () = poll_values(clients_clone.clone(), clients_tx_clone.clone()) => {}
-                () = notify_clone.notified() => {
+                () = shutdown_notify_clone.notified() => {
                     info!("Shutdown notified, cleaning up poll loop");
                 }
             }
@@ -114,7 +114,7 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
             () = &mut shutdown => {
                 info!("Shutdown signal received, stopping connection accept loop");
 
-                notify.notify_waiters();
+                shutdowwn_notify.notify_waiters();
 
                 break;
             },
@@ -124,8 +124,8 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
                 // Spawn a task which handles this socket
                 let clients_clone = clients.clone();
                 let clients_tx_clone = clients_tx.clone();
-                let notify_clone = notify.clone();
-                tokio::spawn(async move { handle_socket(stream, clients_clone, clients_tx_clone, notify_clone).await });
+                let shutdown_notify_clone = shutdowwn_notify.clone();
+                tokio::spawn(async move { handle_socket(stream, clients_clone, clients_tx_clone, shutdown_notify_clone).await });
             }
         }
     }
@@ -145,12 +145,12 @@ pub async fn do_daemon() -> Result<(), DaemonError> {
 /// Returns an error if ``DaemonMessage`` could not be created from bytes
 /// Returns an error if requested value cannot be found or parsed
 /// Returns an error if socket could not be wrote to
-#[instrument(skip(stream, clients, clients_tx, notify))]
+#[instrument(skip(stream, clients, clients_tx, shutdown_notify))]
 pub async fn handle_socket(
     mut stream: UnixStream,
     clients: SharedClients,
     clients_tx: mpsc::UnboundedSender<ClientMessage>,
-    notify: Arc<Notify>,
+    shutdown_notify: Arc<Notify>,
 ) -> Result<(), DaemonError> {
     let mut buf = [0; BUFFER_SIZE];
     loop {
@@ -228,7 +228,7 @@ pub async fn handle_socket(
                 // Send the reply back
                 stream.write_all(&postcard::to_stdvec(&reply)?).await?;
             },
-            () = notify.notified() => {
+            () = shutdown_notify.notified() => {
                 info!("Socket handler received shutdown notification");
                 break;
             }

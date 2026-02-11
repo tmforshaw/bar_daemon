@@ -84,11 +84,11 @@ pub type SharedClients = Arc<Mutex<HashMap<Uuid, Client>>>;
 /// Returns an error if ``DaemonMessage`` could not be created from bytes
 /// Returns an error if socket cannot be read
 /// Returns an error if socket could not be wrote to
-#[instrument(skip(clients, clients_rx, notify))]
+#[instrument(skip(clients, clients_rx, shutdown_notify))]
 pub async fn handle_clients(
     clients: SharedClients,
     clients_rx: &mut mpsc::UnboundedReceiver<ClientMessage>,
-    notify: Arc<Notify>,
+    shutdown_notify: Arc<Notify>,
 ) -> Result<(), DaemonError> {
     let mut tuples = Mutex::new(get_all_tuples().await?);
 
@@ -130,6 +130,7 @@ pub async fn handle_clients(
 
                     let json = tuples_to_json(tuples.lock().await.clone())? + "\n";
 
+                    // TODO Broadcasting should be done via snapshot events
                     // Broadcast to each client
                     for (id, client) in clients.lock().await.iter_mut() {
                         if let Err(e) = client.stream.try_write(json.as_bytes()) {
@@ -145,7 +146,7 @@ pub async fn handle_clients(
                     }
                 }
             }
-            () = notify.notified() => {
+            () = shutdown_notify.notified() => {
                 info!("Client handler received shutdown notification");
                 break;
             }
