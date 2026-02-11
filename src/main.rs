@@ -11,7 +11,6 @@
 #![allow(clippy::implicit_hasher)]
 
 // TODO Re-add the soft errors back in so that errors can easily be found
-// TODO Put the error!() tracing function into default_source since it won't capture functions like read_percent when it's in latest()
 // TODO Add notifications of change in values back (Probably in update_monitored or update_snapshot)
 
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};

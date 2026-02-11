@@ -188,7 +188,6 @@ pub async fn evaluate_item(
 
         DaemonReply::Value { item, value }
     } else {
-        // Get value TODO Probably could use current_snapshot instead of default_source()
         match brightness_item {
             BrightnessItem::Monitor => DaemonReply::Value {
                 item,

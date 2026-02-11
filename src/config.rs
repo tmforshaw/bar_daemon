@@ -32,7 +32,6 @@ impl Default for Config {
 
 static CONFIG: LazyLock<Config> = LazyLock::new(init_config);
 
-// TODO This just panics right now since without CONFIG this daemon can't function
 // TODO Paths in config are relative to $HOME but I could make it possible to be absolute or relative
 #[instrument]
 fn init_config() -> Config {
@@ -93,39 +92,44 @@ fn get_config_from_file<S: AsRef<str>>(file_path: S) -> Config {
 }
 
 fn init_log_file<S: AsRef<str>>(config: &mut Config, home: S) {
-    // TODO Decide whether to add PID to log_file path
+    // TODO Decide whether to add PID fully
+    let use_pid = false;
 
-    // let log_path = {
+    // Add PID to the end of the log_path filename
+    let log_path = {
+        // Create the absolute log file path from the config
+        let log_path_str = format!("{}/{}", home.as_ref(), config.log_file);
+        let log_path = Path::new(log_path_str.as_str());
 
-    // Create the absolute log file path from the config
-    let log_path_str = format!("{}/{}", home.as_ref(), config.log_file);
-    let log_path = Path::new(log_path_str.as_str());
+        if use_pid {
+            // Get the stem and extension of this path
+            let log_stem = log_path.file_stem().unwrap_or_else(|| {
+                panic!(
+                    "{}",
+                    DaemonError::PathCreateError(String::from("Could not get file stem of log_path"))
+                )
+            });
+            let log_ext = log_path.extension().unwrap_or_else(|| {
+                panic!(
+                    "{}",
+                    DaemonError::PathCreateError(String::from("Could not get file extension of log_path"))
+                )
+            });
 
-    //     // Get the stem and extension of this path
-    //     let log_stem = log_path.file_stem().unwrap_or_else(|| {
-    //         panic!(
-    //             "{}",
-    //             DaemonError::PathCreateError(String::from("Could not get file stem of log_path"))
-    //         )
-    //     });
-    //     let log_ext = log_path.extension().unwrap_or_else(|| {
-    //         panic!(
-    //             "{}",
-    //             DaemonError::PathCreateError(String::from("Could not get file extension of log_path"))
-    //         )
-    //     });
+            // Add the PID to the end of the filename
+            let mut new_log_filename = log_stem.to_os_string();
+            new_log_filename.push(format!("_{}", std::process::id()));
 
-    //     // Add the PID to the end of the filename
-    //     let mut new_log_filename = log_stem.to_os_string();
-    //     new_log_filename.push(format!("_{}", std::process::id()));
+            // Set this as the filename for this new path, and readd the extension
+            let mut new_log_path = log_path.to_path_buf();
+            new_log_path.set_file_name(new_log_filename);
+            new_log_path.set_extension(log_ext);
 
-    //     // Set this as the filename for this new path, and readd the extension
-    //     let mut new_log_path = log_path.to_path_buf();
-    //     new_log_path.set_file_name(new_log_filename);
-    //     new_log_path.set_extension(log_ext);
-
-    //     new_log_path
-    // };
+            new_log_path
+        } else {
+            log_path.to_path_buf()
+        }
+    };
 
     // Create the log file parent directories if they don't exist
     if let Some(parent) = log_path.parent()
