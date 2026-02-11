@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use tracing::instrument;
+use tracing::{info, instrument};
 
 use crate::{
     battery::{self, BatteryGetCommands},
@@ -154,6 +154,8 @@ pub async fn evaluate_cli() -> Result<(), DaemonError> {
             return Ok(());
         }
     };
+
+    info!("Cli command: {message_to_send:?}");
 
     let reply = send_daemon_messaage(message_to_send).await?;
     println!("{reply:?}");
