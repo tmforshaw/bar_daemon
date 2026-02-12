@@ -22,6 +22,8 @@ use crate::{
     tuples::ToTuples,
 };
 
+const NOTIFICATION_OFFSET: u32 = 0;
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
 pub enum BatteryState {
     FullyCharged = 0,
@@ -145,7 +147,7 @@ pub async fn notify(update: MonitoredUpdate<Battery>) -> Result<(), DaemonError>
                 "-i",
                 battery.get_icon().as_str(),
                 "-r",
-                NOTIFICATION_ID.to_string().as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 "-h",
                 format!("int:value:{}", battery.percent).as_str(),
                 "Battery: ",
@@ -164,7 +166,7 @@ pub async fn notify(update: MonitoredUpdate<Battery>) -> Result<(), DaemonError>
                 "-t",
                 get_config().notification_timeout.to_string().as_str(),
                 "-r",
-                NOTIFICATION_ID.to_string().as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 format!("Battery Unavailable: {}", Unavailable::<Battery>).as_str(),
             ],
         )?;

@@ -18,6 +18,8 @@ use clap::{ArgAction, Subcommand};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
+const NOTIFICATION_OFFSET: u32 = 4;
+
 #[derive(Subcommand)]
 pub enum VolumeGetCommands {
     #[command(alias = "per", alias = "p")]
@@ -124,7 +126,7 @@ pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> 
                 "-u",
                 "normal",
                 "-r",
-                format!("{NOTIFICATION_ID}").as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 "-i",
                 new.get_icon().trim(),
                 "-t",
@@ -145,7 +147,7 @@ pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> 
                 "-u",
                 "normal",
                 "-r",
-                format!("{NOTIFICATION_ID}").as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 "-t",
                 get_config().notification_timeout.to_string().as_str(),
                 "Volume Unavailable",

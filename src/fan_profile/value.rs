@@ -18,6 +18,8 @@ use crate::{
 
 use super::{FAN_STATE_STRINGS, FanProfileSource, default_source};
 
+const NOTIFICATION_OFFSET: u32 = 3;
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum FanState {
     Performance = 0,
@@ -114,7 +116,7 @@ pub async fn notify(update: MonitoredUpdate<FanProfile>) -> Result<(), DaemonErr
                 "-i",
                 FanProfile::get_icon().as_str(),
                 "-r",
-                NOTIFICATION_ID.to_string().as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 format!("Fan Profile: {}", FAN_STATE_STRINGS[new.profile as usize]).as_str(),
             ],
         )?;
@@ -133,7 +135,7 @@ pub async fn notify(update: MonitoredUpdate<FanProfile>) -> Result<(), DaemonErr
                 "-i",
                 FanProfile::get_icon().as_str(),
                 "-r",
-                NOTIFICATION_ID.to_string().as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 "Fan Profile Unavailable",
             ],
         )?;

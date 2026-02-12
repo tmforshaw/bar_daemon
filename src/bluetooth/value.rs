@@ -18,6 +18,8 @@ use crate::{
 
 use super::{BluetoothSource, default_source, latest};
 
+const NOTIFICATION_OFFSET: u32 = 1;
+
 #[derive(Subcommand)]
 pub enum BluetoothGetCommands {
     #[command(alias = "s")]
@@ -91,7 +93,7 @@ pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonErro
                 "-u",
                 "normal",
                 "-r",
-                format!("{NOTIFICATION_ID}").as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 "-i",
                 new.get_icon().trim(),
                 "-t",
@@ -110,7 +112,7 @@ pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonErro
                 "-u",
                 "normal",
                 "-r",
-                format!("{NOTIFICATION_ID}").as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 "-t",
                 get_config().notification_timeout.to_string().as_str(),
                 "Bluetooth Unavailable",

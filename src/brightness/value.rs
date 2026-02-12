@@ -16,6 +16,8 @@ use crate::{
 
 use super::{BrightnessSource, MONITOR_ID, default_source, latest};
 
+const NOTIFICATION_OFFSET: u32 = 2;
+
 #[derive(Subcommand)]
 pub enum BrightnessGetCommands {
     #[command(alias = "mon", alias = "m")]
@@ -121,7 +123,7 @@ pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Res
                 "-u",
                 "normal",
                 "-r",
-                format!("{NOTIFICATION_ID}").as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 "-i",
                 new.get_icon(device_id).trim(),
                 "-t",
@@ -147,7 +149,7 @@ pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Res
                 "-u",
                 "normal",
                 "-r",
-                format!("{NOTIFICATION_ID}").as_str(),
+                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
                 "-t",
                 get_config().notification_timeout.to_string().as_str(),
                 format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
