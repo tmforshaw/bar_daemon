@@ -119,21 +119,22 @@ impl BrightnessSource for BctlBrightness {
     /// Returns an error if values in the output of the command cannot be parsed
     #[instrument]
     async fn set_monitor(&self, percent_str: &str) -> Result<(), DaemonError> {
-        let prev_brightness = current_snapshot()
-            .await
-            .brightness
-            .unwrap_or(latest().await?.unwrap_or_default());
-
         set_bctl_device(MONITOR_ID, percent_str).await?;
 
-        let new_monitor = latest().await?.unwrap_or_default().monitor;
+        // Get snapshot brightness and set new monitor, or get entire latest()
+        let brightness = match current_snapshot().await.brightness {
+            Valid(brightness) => match default_source().read_monitor().await? {
+                Valid(new_monitor) => Valid(Brightness {
+                    monitor: new_monitor,
+                    ..brightness
+                }),
+                Unavailable => Unavailable,
+            },
+            Unavailable => latest().await?,
+        };
 
         // Update snapshot
-        let update = update_snapshot(Valid(Brightness {
-            monitor: new_monitor,
-            ..prev_brightness
-        }))
-        .await;
+        let update = update_snapshot(brightness).await;
 
         // Do a notification
         brightness::notify(update, MONITOR_ID).await?;
@@ -146,21 +147,22 @@ impl BrightnessSource for BctlBrightness {
     /// Returns an error if values in the output of the command cannot be parsed
     #[instrument]
     async fn set_keyboard(&self, percent_str: &str) -> Result<(), DaemonError> {
-        let prev_brightness = current_snapshot()
-            .await
-            .brightness
-            .unwrap_or(latest().await?.unwrap_or_default());
-
         set_bctl_device(KEYBOARD_ID, percent_str).await?;
 
-        let new_keyboard = latest().await?.unwrap_or_default().keyboard;
+        // Get snapshot brightness and set new keyboard, or get entire latest()
+        let brightness = match current_snapshot().await.brightness {
+            Valid(brightness) => match default_source().read_keyboard().await? {
+                Valid(new_keyboard) => Valid(Brightness {
+                    keyboard: new_keyboard,
+                    ..brightness
+                }),
+                Unavailable => Unavailable,
+            },
+            Unavailable => latest().await?,
+        };
 
         // Update snapshot
-        let update = update_snapshot(Valid(Brightness {
-            keyboard: new_keyboard,
-            ..prev_brightness
-        }))
-        .await;
+        let update = update_snapshot(brightness).await;
 
         // Do a notification
         brightness::notify(update, KEYBOARD_ID).await?;

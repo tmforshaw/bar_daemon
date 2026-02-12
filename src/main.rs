@@ -10,7 +10,7 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::implicit_hasher)]
 
-// TODO fix fan profile notification since it shows multiple times for same state
+// TODO Some of the set functions should try to get latest when current_snapshot() returns Unavailable
 
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 

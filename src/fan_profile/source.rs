@@ -84,6 +84,11 @@ impl FanProfileSource for AsusctlFanProfile {
     /// Returns an error if the set command can't be ran
     #[instrument]
     async fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError> {
+        let fan_profile = match current_snapshot().await.fan_profile {
+            Valid(fan_profile) => Valid(fan_profile),
+            Observed::Unavailable => latest().await?,
+        };
+
         let new_profile_idx;
 
         let new_profile = if let Some(index) = FAN_STATE_STRINGS.iter().position(|&profile| profile == profile_str.trim()) {
@@ -93,24 +98,18 @@ impl FanProfileSource for AsusctlFanProfile {
             // A new profile has been set
             profile_str.trim()
         } else {
-            // Profile is set via cyclic function
-            let current_profile = current_snapshot()
-                .await
-                .fan_profile
-                .unwrap_or(latest().await?.unwrap_or_default())
-                .profile;
+            let profile = fan_profile.clone().unwrap_or_default().profile;
 
+            // Profile is set via cyclic function
             match profile_str {
                 "next" => {
                     // Calculate the new profile's index
-                    new_profile_idx = (current_profile as usize + 1) % FAN_STATE_STRINGS.len();
+                    new_profile_idx = (profile as usize + 1) % FAN_STATE_STRINGS.len();
 
                     FAN_STATE_STRINGS[new_profile_idx]
                 }
                 "prev" => {
-                    new_profile_idx = (current_profile as usize)
-                        .checked_sub(1)
-                        .unwrap_or(FAN_STATE_STRINGS.len() - 1);
+                    new_profile_idx = (profile as usize).checked_sub(1).unwrap_or(FAN_STATE_STRINGS.len() - 1);
 
                     FAN_STATE_STRINGS[new_profile_idx]
                 }
@@ -122,7 +121,7 @@ impl FanProfileSource for AsusctlFanProfile {
         command::run("asusctl", &["profile", "set", new_profile])?;
 
         // Update snapshot
-        let update = update_snapshot(Valid(FanProfile {
+        let update = update_snapshot(fan_profile.map(|_| FanProfile {
             profile: new_profile_idx.into(),
         }))
         .await;
