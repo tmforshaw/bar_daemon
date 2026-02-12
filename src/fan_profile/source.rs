@@ -4,6 +4,7 @@ use crate::{
     command,
     error::DaemonError,
     fan_profile,
+    observed::Observed::{self, Valid},
     snapshot::{current_snapshot, update_snapshot},
 };
 
@@ -13,8 +14,8 @@ pub const FAN_STATE_STRINGS: &[&str] = &["Performance", "Balanced", "Quiet"];
 
 pub trait FanProfileSource {
     // Read from commands (Get latest values)
-    fn read(&self) -> impl std::future::Future<Output = Result<FanProfile, DaemonError>> + Send;
-    async fn read_profile(&self) -> Result<FanState, DaemonError>;
+    fn read(&self) -> impl std::future::Future<Output = Result<Observed<FanProfile>, DaemonError>> + Send;
+    async fn read_profile(&self) -> Result<Observed<FanState>, DaemonError>;
 
     // Change values of source
     fn set_profile(&self, profile_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + Send;
@@ -27,7 +28,7 @@ pub fn default_source() -> impl FanProfileSource {
     AsusctlFanProfile
 }
 
-pub async fn latest() -> Result<FanProfile, DaemonError> {
+pub async fn latest() -> Result<Observed<FanProfile>, DaemonError> {
     default_source().read().await
 }
 
@@ -43,10 +44,24 @@ impl FanProfileSource for AsusctlFanProfile {
     /// Returns an error if the correct part of the line can't be found
     /// Returns an error if the profile string can't be converted to ``FanState``
     #[instrument]
-    async fn read(&self) -> Result<FanProfile, DaemonError> {
-        let profile = self.read_profile().await?;
+    async fn read(&self) -> Result<Observed<FanProfile>, DaemonError> {
+        fn read_inner() -> Result<FanProfile, DaemonError> {
+            // Read the profile from the output of asusctl
+            let profile = get_asusctl_profile()?;
 
-        Ok(FanProfile { profile })
+            Ok(FanProfile { profile })
+        }
+
+        // Set as unavailable if the inner function threw an error
+        let fan_profile: Observed<_> = read_inner().into();
+
+        // Update snapshot
+        let update = update_snapshot(fan_profile.clone()).await;
+
+        // Do a notification
+        fan_profile::notify(update).await?;
+
+        Ok(fan_profile)
     }
 
     /// # Errors
@@ -55,17 +70,11 @@ impl FanProfileSource for AsusctlFanProfile {
     /// Returns an error if the correct part of the line can't be found
     /// Returns an error if the profile string can't be converted to ``FanState``
     #[instrument]
-    async fn read_profile(&self) -> Result<FanState, DaemonError> {
-        // Read the profile from the output of asusctl
-        let profile = get_asusctl_profile()?;
-
-        // Update snapshot
-        let update = update_snapshot(FanProfile { profile }).await;
-
-        // Do a notification
-        fan_profile::notify(update).await?;
-
-        Ok(profile)
+    async fn read_profile(&self) -> Result<Observed<FanState>, DaemonError> {
+        // If there was an error, keep as unavailable, if not then map to monitored value
+        self.read()
+            .await
+            .map(|fan_profile| fan_profile.map(|fan_profile| fan_profile.profile))
     }
 
     /// # Errors
@@ -83,7 +92,11 @@ impl FanProfileSource for AsusctlFanProfile {
             profile_str.trim()
         } else {
             // Profile is set via cyclic function
-            let current_profile = current_snapshot().await.fan_profile.unwrap_or(latest().await?).profile;
+            let current_profile = current_snapshot()
+                .await
+                .fan_profile
+                .unwrap_or(latest().await?.unwrap_or_default())
+                .profile;
 
             match profile_str {
                 "next" => {
@@ -107,9 +120,9 @@ impl FanProfileSource for AsusctlFanProfile {
         command::run("asusctl", &["profile", "set", new_profile])?;
 
         // Update snapshot
-        let update = update_snapshot(FanProfile {
+        let update = update_snapshot(Valid(FanProfile {
             profile: new_profile_idx.into(),
-        })
+        }))
         .await;
 
         // Do a notification

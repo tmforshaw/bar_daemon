@@ -5,6 +5,7 @@ use tracing::instrument;
 use crate::{
     command,
     error::DaemonError,
+    observed::Observed::{self, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
 };
 
@@ -12,10 +13,10 @@ use super::Ram;
 
 pub trait RamSource {
     // Read from commands (Get latest values)
-    fn read(&self) -> impl std::future::Future<Output = Result<Ram, DaemonError>> + Send;
-    fn read_total(&self) -> impl std::future::Future<Output = Result<u64, DaemonError>> + Send;
-    fn read_used(&self) -> impl std::future::Future<Output = Result<u64, DaemonError>> + Send;
-    fn read_percent(&self) -> impl std::future::Future<Output = Result<u32, DaemonError>> + Send;
+    fn read(&self) -> impl std::future::Future<Output = Result<Observed<Ram>, DaemonError>> + Send;
+    fn read_total(&self) -> impl std::future::Future<Output = Result<Observed<u64>, DaemonError>> + Send;
+    fn read_used(&self) -> impl std::future::Future<Output = Result<Observed<u64>, DaemonError>> + Send;
+    fn read_percent(&self) -> impl std::future::Future<Output = Result<Observed<u32>, DaemonError>> + Send;
 }
 
 // -------------- Default Source ---------------
@@ -25,7 +26,7 @@ pub fn default_source() -> impl RamSource {
     ProcpsRam
 }
 
-pub async fn latest() -> Result<Ram, DaemonError> {
+pub async fn latest() -> Result<Observed<Ram>, DaemonError> {
     default_source().read().await
 }
 
@@ -39,17 +40,23 @@ impl RamSource for ProcpsRam {
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     #[instrument]
-    async fn read(&self) -> Result<Ram, DaemonError> {
-        let output = get_procps_output()?;
-        let output_split = get_procps_output_split(&output)?;
+    async fn read(&self) -> Result<Observed<Ram>, DaemonError> {
+        fn read_inner() -> Result<Ram, DaemonError> {
+            let output = get_procps_output()?;
+            let output_split = get_procps_output_split(&output)?;
 
-        let total = get_procps_total_from_split(output_split.clone())?;
-        let used = get_procps_used_from_split(output_split)?;
+            let total = get_procps_total_from_split(output_split.clone())?;
+            let used = get_procps_used_from_split(output_split)?;
 
-        let percent = get_percent_from_used_total(used, total);
+            let percent = get_percent_from_used_total(used, total);
+
+            Ok(Ram { total, used, percent })
+        }
+
+        // Set as unavailable if the inner function threw an error
+        let ram: Observed<_> = read_inner().into();
 
         // Update snapshot
-        let ram = Ram { total, used, percent };
         let _update = update_snapshot(ram.clone()).await;
 
         Ok(ram)
@@ -59,66 +66,87 @@ impl RamSource for ProcpsRam {
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     #[instrument]
-    async fn read_total(&self) -> Result<u64, DaemonError> {
-        let output = get_procps_output()?;
-        let output_split = get_procps_output_split(&output)?;
+    async fn read_total(&self) -> Result<Observed<u64>, DaemonError> {
+        fn read_total_inner() -> Result<u64, DaemonError> {
+            let output = get_procps_output()?;
+            let output_split = get_procps_output_split(&output)?;
 
-        let total = get_procps_total_from_split(output_split)?;
+            get_procps_total_from_split(output_split)
+        }
+
+        // If there was an error, keep as unavailable, if not then map to monitored value
+        let ram = match read_total_inner().into() {
+            Valid(total) => {
+                let ram = current_snapshot().await.ram.unwrap_or_default();
+
+                Valid(Ram { total, ..ram })
+            }
+            Unavailable => Unavailable,
+        };
 
         // Update snapshot
-        let ram = current_snapshot()
-            .await
-            .ram
-            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
-            .unwrap_or_default();
-        let _update = update_snapshot(Ram { total, ..ram }).await;
+        let _update = update_snapshot(ram.clone()).await;
 
-        Ok(total)
+        Ok(ram.map(|ram| ram.total))
     }
 
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     #[instrument]
-    async fn read_used(&self) -> Result<u64, DaemonError> {
-        let output = get_procps_output()?;
-        let output_split = get_procps_output_split(&output)?;
+    async fn read_used(&self) -> Result<Observed<u64>, DaemonError> {
+        fn read_used_inner() -> Result<u64, DaemonError> {
+            let output = get_procps_output()?;
+            let output_split = get_procps_output_split(&output)?;
 
-        let used = get_procps_used_from_split(output_split)?;
+            get_procps_used_from_split(output_split)
+        }
+
+        // If there was an error, keep as unavailable, if not then map to monitored value
+        let ram = match read_used_inner().into() {
+            Valid(used) => {
+                let ram = current_snapshot().await.ram.unwrap_or_default();
+
+                Valid(Ram { used, ..ram })
+            }
+            Unavailable => Unavailable,
+        };
 
         // Update snapshot
-        let ram = current_snapshot()
-            .await
-            .ram
-            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
-            .unwrap_or_default();
-        let _update = update_snapshot(Ram { used, ..ram }).await;
+        let _update = update_snapshot(ram.clone()).await;
 
-        Ok(used)
+        Ok(ram.map(|ram| ram.used))
     }
 
     /// # Errors
     /// Returns an error if the command cannot be spawned
     /// Returns an error if values in the output of the command cannot be parsed
     #[instrument]
-    async fn read_percent(&self) -> Result<u32, DaemonError> {
-        let output = get_procps_output()?;
-        let output_split = get_procps_output_split(&output)?;
+    async fn read_percent(&self) -> Result<Observed<u32>, DaemonError> {
+        fn read_percent_inner() -> Result<u32, DaemonError> {
+            let output = get_procps_output()?;
+            let output_split = get_procps_output_split(&output)?;
 
-        let total = get_procps_total_from_split(output_split.clone())?;
-        let used = get_procps_used_from_split(output_split)?;
+            let total = get_procps_total_from_split(output_split.clone())?;
+            let used = get_procps_used_from_split(output_split)?;
 
-        let percent = get_percent_from_used_total(used, total);
+            Ok(get_percent_from_used_total(used, total))
+        }
+
+        // If there was an error, keep as unavailable, if not then map to monitored value
+        let ram = match read_percent_inner().into() {
+            Valid(percent) => {
+                let ram = current_snapshot().await.ram.unwrap_or_default();
+
+                Valid(Ram { percent, ..ram })
+            }
+            Unavailable => Unavailable,
+        };
 
         // Update snapshot
-        let ram = current_snapshot()
-            .await
-            .ram
-            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
-            .unwrap_or_default();
-        let _update = update_snapshot(Ram { percent, ..ram }).await;
+        let _update = update_snapshot(ram.clone()).await;
 
-        Ok(percent)
+        Ok(ram.map(|ram| ram.percent))
     }
 }
 
