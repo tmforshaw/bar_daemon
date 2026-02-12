@@ -125,7 +125,9 @@ impl VolumeSource for WpctlVolume {
         // Get the current snapshot values
         let snapshot = current_snapshot().await;
 
-        let current_volume = snapshot.volume.unwrap_or(latest().await?);
+        // TODO probably could implement some sort of "last known value" for this
+
+        let current_volume = snapshot.volume.unwrap_or(latest().await?.unwrap_or_default());
 
         // If the percentage is a change, figure out the true percentage
         let linear_percent = if percent_str.starts_with('+') || percent_str.starts_with('-') {
@@ -151,10 +153,10 @@ impl VolumeSource for WpctlVolume {
         };
 
         // Update the volume in the snapshot
-        let update = update_snapshot(Volume {
+        let update = update_snapshot(Valid(Volume {
             percent: linear_percent,
             ..current_volume
-        })
+        }))
         .await;
 
         // Do a notification
@@ -174,7 +176,7 @@ impl VolumeSource for WpctlVolume {
 
     #[instrument]
     async fn set_mute(&self, mute_str: &str) -> Result<(), DaemonError> {
-        let current_volume = current_snapshot().await.volume.unwrap_or(latest().await?);
+        let current_volume = current_snapshot().await.volume.unwrap_or(latest().await?.unwrap_or_default());
 
         let new_mute;
 
@@ -193,10 +195,10 @@ impl VolumeSource for WpctlVolume {
         let _ = command::run("wpctl", &["set-mute", "@DEFAULT_SINK@", mute.as_str()])?;
 
         // Update the volume in the snapshot
-        let update = update_snapshot(Volume {
+        let update = update_snapshot(Valid(Volume {
             mute: new_mute,
             ..current_volume
-        })
+        }))
         .await;
 
         // Do a notification
