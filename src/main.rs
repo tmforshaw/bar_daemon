@@ -10,7 +10,7 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::implicit_hasher)]
 
-// TODO Re-add the soft errors back in so that errors can easily be found, and don't crash the listener
+// TODO fix fan profile notification since it shows multiple times for same state
 
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 

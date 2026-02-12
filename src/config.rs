@@ -16,8 +16,6 @@ pub struct Config {
     pub notification_timeout: u32,
     /// Polling rate for polled values in milliseconds
     pub polling_rate: u64,
-    /// The location of the log file for this daemon
-    pub log_file: String,
 }
 
 impl Default for Config {
@@ -25,7 +23,6 @@ impl Default for Config {
         Self {
             notification_timeout: 1000,
             polling_rate: 2000,
-            log_file: String::from(".cache/bar_daemon/bar_daemon.log"),
         }
     }
 }
@@ -39,12 +36,7 @@ fn init_config() -> Config {
     let home = get_home_dir();
 
     // Combine $HOME and CONFIG_PATH to create a full path to the config file
-    let mut config = get_config_from_file(format!("{home}/{CONFIG_PATH}"));
-
-    // Initialise the log file, setting log_file in Config to absolute path of current log_file
-    init_log_file(&mut config, home);
-
-    config
+    get_config_from_file(format!("{home}/{CONFIG_PATH}"))
 }
 
 fn get_home_dir() -> String {
@@ -89,75 +81,6 @@ fn get_config_from_file<S: AsRef<str>>(file_path: S) -> Config {
 
     // Convert the text in the config file to a Config struct using TOML
     toml::from_str(config.as_str()).unwrap_or_else(|e| panic!("{e}"))
-}
-
-fn init_log_file<S: AsRef<str>>(config: &mut Config, home: S) {
-    // TODO Decide whether to add PID fully
-    let use_pid = false;
-
-    // Add PID to the end of the log_path filename
-    let log_path = {
-        // Create the absolute log file path from the config
-        let log_path_str = format!("{}/{}", home.as_ref(), config.log_file);
-        let log_path = Path::new(log_path_str.as_str());
-
-        if use_pid {
-            // Get the stem and extension of this path
-            let log_stem = log_path.file_stem().unwrap_or_else(|| {
-                panic!(
-                    "{}",
-                    DaemonError::PathCreateError(String::from("Could not get file stem of log_path"))
-                )
-            });
-            let log_ext = log_path.extension().unwrap_or_else(|| {
-                panic!(
-                    "{}",
-                    DaemonError::PathCreateError(String::from("Could not get file extension of log_path"))
-                )
-            });
-
-            // Add the PID to the end of the filename
-            let mut new_log_filename = log_stem.to_os_string();
-            new_log_filename.push(format!("_{}", std::process::id()));
-
-            // Set this as the filename for this new path, and readd the extension
-            let mut new_log_path = log_path.to_path_buf();
-            new_log_path.set_file_name(new_log_filename);
-            new_log_path.set_extension(log_ext);
-
-            new_log_path
-        } else {
-            log_path.to_path_buf()
-        }
-    };
-
-    // Create the log file parent directories if they don't exist
-    if let Some(parent) = log_path.parent()
-        && !parent.exists()
-    {
-        // Create the log path parent folders
-        fs::create_dir_all(log_path.parent().unwrap_or_else(|| {
-            panic!(
-                "{}",
-                DaemonError::PathCreateError(String::from("Could get parent of `log_path`"))
-            )
-        }))
-        .unwrap_or_else(|e| panic!("{}", DaemonError::PathCreateError(e.to_string())));
-    }
-
-    // Get the string representation of the log_file path
-    let log_path_str = log_path
-        .to_str()
-        .unwrap_or_else(|| {
-            panic!(
-                "{}",
-                DaemonError::PathCreateError(String::from("Could not create log_path_str from log_path"))
-            )
-        })
-        .to_string();
-
-    // Replace the log_file in Config with the absolute path
-    config.log_file = log_path_str;
 }
 
 pub fn get_config() -> Config {
