@@ -8,15 +8,16 @@ use crate::{
     command,
     error::DaemonError,
     log_linear::{linear_to_logarithmic, logarithmic_to_linear},
+    observed::Observed::{self, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
     volume,
 };
 
 pub trait VolumeSource {
     // Read from commands (Get latest values)
-    fn read(&self) -> impl std::future::Future<Output = Result<Volume, DaemonError>> + std::marker::Send;
-    fn read_percent(&self) -> impl std::future::Future<Output = Result<u32, DaemonError>> + std::marker::Send;
-    fn read_mute(&self) -> impl std::future::Future<Output = Result<bool, DaemonError>> + std::marker::Send;
+    fn read(&self) -> impl std::future::Future<Output = Result<Observed<Volume>, DaemonError>> + std::marker::Send;
+    fn read_percent(&self) -> impl std::future::Future<Output = Result<Observed<u32>, DaemonError>> + std::marker::Send;
+    fn read_mute(&self) -> impl std::future::Future<Output = Result<Observed<bool>, DaemonError>> + std::marker::Send;
 
     // Change values of source
     fn set_percent(&self, percent_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + std::marker::Send;
@@ -30,7 +31,7 @@ pub fn default_source() -> impl VolumeSource {
     WpctlVolume
 }
 
-pub async fn latest() -> Result<Volume, DaemonError> {
+pub async fn latest() -> Result<Observed<Volume>, DaemonError> {
     default_source().read().await
 }
 
@@ -43,15 +44,20 @@ impl VolumeSource for WpctlVolume {
     // Read from commands
 
     #[instrument]
-    async fn read(&self) -> Result<Volume, DaemonError> {
-        let output = get_wpctl_output()?;
-        let output_split = get_wpctl_split(&output);
+    async fn read(&self) -> Result<Observed<Volume>, DaemonError> {
+        fn read_inner() -> Result<Volume, DaemonError> {
+            let output = get_wpctl_output()?;
+            let output_split = get_wpctl_split(&output);
 
-        let percent = get_linear_percent_from_wpctl_split(output_split.clone())?;
+            let percent = get_linear_percent_from_wpctl_split(output_split.clone())?;
 
-        let mute = get_mute_from_wpctl_split(output_split);
+            let mute = get_mute_from_wpctl_split(output_split);
 
-        let volume = Volume { percent, mute };
+            Ok(Volume { percent, mute })
+        }
+
+        // Set as unavailable if the inner function threw an error
+        let volume: Observed<_> = read_inner().into();
 
         // Update current snapshot
         let _update = update_snapshot(volume.clone()).await;
@@ -60,39 +66,53 @@ impl VolumeSource for WpctlVolume {
     }
 
     #[instrument]
-    async fn read_percent(&self) -> Result<u32, DaemonError> {
-        let output = get_wpctl_output()?;
-        let output_split = get_wpctl_split(&output);
+    async fn read_percent(&self) -> Result<Observed<u32>, DaemonError> {
+        fn read_percent_inner() -> Result<u32, DaemonError> {
+            let output = get_wpctl_output()?;
+            let output_split = get_wpctl_split(&output);
 
-        let percent = get_linear_percent_from_wpctl_split(output_split.clone())?;
+            get_linear_percent_from_wpctl_split(output_split.clone())
+        }
+
+        // If there was an error, keep as unavailable, if not then map to entire monitored value
+        let volume = match read_percent_inner().into() {
+            Valid(percent) => {
+                let volume = current_snapshot().await.volume.unwrap_or_default();
+
+                Valid(Volume { percent, ..volume })
+            }
+            Unavailable => Unavailable,
+        };
 
         // Update current snapshot
-        let volume = current_snapshot()
-            .await
-            .volume
-            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
-            .unwrap_or_default();
-        let _update = update_snapshot(Volume { percent, ..volume }).await;
+        let _update = update_snapshot(volume.clone()).await;
 
-        Ok(percent)
+        Ok(volume.map(|volume| volume.percent))
     }
 
     #[instrument]
-    async fn read_mute(&self) -> Result<bool, DaemonError> {
-        let output = get_wpctl_output()?;
-        let output_split = get_wpctl_split(&output);
+    async fn read_mute(&self) -> Result<Observed<bool>, DaemonError> {
+        fn read_mute_inner() -> Result<bool, DaemonError> {
+            let output = get_wpctl_output()?;
+            let output_split = get_wpctl_split(&output);
 
-        let mute = get_mute_from_wpctl_split(output_split.clone());
+            Ok(get_mute_from_wpctl_split(output_split.clone()))
+        }
+
+        // If there was an error, keep as unavailable, if not then map to entire monitored value
+        let volume = match read_mute_inner().into() {
+            Valid(mute) => {
+                let volume = current_snapshot().await.volume.unwrap_or_default();
+
+                Valid(Volume { mute, ..volume })
+            }
+            Unavailable => Unavailable,
+        };
 
         // Update current snapshot
-        let volume = current_snapshot()
-            .await
-            .volume
-            // .map_or_else(Monitored::couldnt_find_monitored, Ok)?;
-            .unwrap_or_default();
-        let _update = update_snapshot(Volume { mute, ..volume }).await;
+        let _update = update_snapshot(volume.clone()).await;
 
-        Ok(mute)
+        Ok(volume.map(|volume| volume.mute))
     }
 
     // Set source values

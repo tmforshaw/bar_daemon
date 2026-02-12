@@ -51,7 +51,7 @@ impl BatterySource for AcpiBattery {
         }
 
         // Set as unavailable if the inner function threw an error
-        let battery: Observed<Battery> = read_inner().into();
+        let battery: Observed<_> = read_inner().into();
 
         // Update current snapshot
         let update = update_snapshot(battery.clone()).await;
@@ -72,7 +72,7 @@ impl BatterySource for AcpiBattery {
             get_state_from_acpi_split(output_split)
         }
 
-        // If there was an error, keep as unavailable, if not then map to entire struct
+        // If there was an error, keep as unavailable, if not then map to entire monitored value
         let battery = match read_state_inner().into() {
             Valid(state) => {
                 let battery = current_snapshot().await.battery.unwrap_or_default();
@@ -100,7 +100,7 @@ impl BatterySource for AcpiBattery {
             get_percent_from_acpi_split(output_split)
         }
 
-        // If there was an error, keep as unavailable, if not then map to entire struct
+        // If there was an error, keep as unavailable, if not then map to entire monitored value
         let battery = match read_percent_inner().into() {
             Valid(percent) => {
                 let battery = current_snapshot().await.battery.unwrap_or_default();
@@ -129,7 +129,7 @@ impl BatterySource for AcpiBattery {
             get_time_from_acpi_split(output_split)
         }
 
-        // If there was an error, keep as unavailable, if not then map to entire struct
+        // If there was an error, keep as unavailable, if not then map to entire monitored value
         let battery = match read_time_inner().into() {
             Valid(time) => {
                 let battery = current_snapshot().await.battery.unwrap_or_default();
