@@ -1,4 +1,4 @@
-use crate::error::DaemonError;
+use crate::{error::DaemonError, observed::Observed};
 use tracing::{error, instrument};
 
 use source::{BatterySource, default_source};
@@ -13,7 +13,7 @@ mod value;
 /// Returns an error if the latest `Battery` can't be read due to `RwLock` Poisoning
 /// Returns an error if the latest `Battery` can't be read due to parsing errors
 #[instrument]
-pub async fn latest() -> Result<Battery, DaemonError> {
+pub async fn latest() -> Result<Observed<Battery>, DaemonError> {
     match source::latest().await {
         Ok(latest) => Ok(latest),
         Err(e) => {

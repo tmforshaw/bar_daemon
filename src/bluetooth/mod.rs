@@ -1,4 +1,4 @@
-use crate::error::DaemonError;
+use crate::{error::DaemonError, observed::Observed};
 use tracing::error;
 
 use source::BluetoothSource;
@@ -14,7 +14,7 @@ mod value;
 
 /// # Errors
 /// Returns an error if the latest `Bluetooth` can't be read due to parsing errors
-pub async fn latest() -> Result<Bluetooth, DaemonError> {
+pub async fn latest() -> Result<Observed<Bluetooth>, DaemonError> {
     match source::latest().await {
         Ok(latest) => Ok(latest),
         Err(e) => {

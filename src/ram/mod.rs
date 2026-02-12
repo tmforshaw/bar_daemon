@@ -1,4 +1,4 @@
-use crate::error::DaemonError;
+use crate::{error::DaemonError, observed::Observed};
 use source::{RamSource, default_source};
 
 use tracing::error;
@@ -9,7 +9,7 @@ mod value;
 
 /// # Errors
 /// Returns an error if the latest `Ram` can't be read due to parsing errors
-pub async fn latest() -> Result<Ram, DaemonError> {
+pub async fn latest() -> Result<Observed<Ram>, DaemonError> {
     match source::latest().await {
         Ok(latest) => Ok(latest),
         Err(e) => {

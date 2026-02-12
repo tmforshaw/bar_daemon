@@ -1,4 +1,4 @@
-use crate::error::DaemonError;
+use crate::{error::DaemonError, observed::Observed};
 use source::{VolumeSource, default_source};
 use value::notify;
 
@@ -13,7 +13,7 @@ mod value;
 
 /// # Errors
 /// Returns an error if the latest `Volume` can't be read due to parsing errors
-pub async fn latest() -> Result<Volume, DaemonError> {
+pub async fn latest() -> Result<Observed<Volume>, DaemonError> {
     match source::latest().await {
         Ok(latest) => Ok(latest),
         Err(e) => {
