@@ -17,5 +17,6 @@ pub fn init_logging() {
         .with_target(false)
         .without_time()
         .with_ansi(true)
+        .with_writer(std::io::stderr) // Ensure that systemd sees the outputs
         .init();
 }
