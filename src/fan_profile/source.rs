@@ -98,7 +98,6 @@ impl FanProfileSource for AsusctlFanProfile {
             // A new profile has been set
             profile_str.trim()
         } else {
-            // TODO Should have some sort of last known value
             let profile = fan_profile.clone().unwrap_or_default().profile;
 
             // Profile is set via cyclic function

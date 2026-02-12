@@ -10,9 +10,9 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::implicit_hasher)]
 
-// TODO Some of the set functions should try to get latest when current_snapshot() returns Unavailable
-
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
+
+// TODO Implement some kind of "last-known value" system for the 'set' functions
 
 pub mod battery;
 pub mod bluetooth;
