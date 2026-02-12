@@ -127,6 +127,13 @@ impl<T> Observed<T> {
         }
     }
 
+    pub fn map_unavailable<F: Fn() -> T>(self, f: F) -> Observed<T> {
+        match self {
+            Valid(v) => Valid(v),
+            Unavailable => Valid(f()),
+        }
+    }
+
     pub fn map_or<F: Fn(T) -> U, U>(self, default: U, f: F) -> U {
         match self {
             Valid(v) => f(v),

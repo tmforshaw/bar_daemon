@@ -5,6 +5,7 @@ use crate::{
     bluetooth, brightness,
     error::DaemonError,
     fan_profile,
+    observed::Observed::{Unavailable, Valid},
     ram::{self},
     snapshot::current_snapshot,
     volume,
@@ -57,17 +58,18 @@ pub async fn tuple_name_to_tuples(tuple_name: &TupleName) -> Result<Vec<(String,
 async fn tuple_name_to_tuples_inner(tuple_name: &TupleName) -> Result<Vec<(String, String)>, DaemonError> {
     // use latest() for polled values and current_snapshot() for values which don't change without user intervention (Use latest if the current_snapshot() values are None)
     Ok(match tuple_name {
-        TupleName::Volume => current_snapshot().await.volume.unwrap_or(volume::latest().await?).to_tuples(),
-        TupleName::Brightness => current_snapshot()
-            .await
-            .brightness
-            .unwrap_or(brightness::latest().await?)
-            .to_tuples(),
-        TupleName::Bluetooth => current_snapshot()
-            .await
-            .bluetooth
-            .unwrap_or(bluetooth::latest().await?)
-            .to_tuples(),
+        TupleName::Volume => match current_snapshot().await.volume {
+            Valid(volume) => volume.to_tuples(),
+            Unavailable => volume::latest().await?.to_tuples(),
+        },
+        TupleName::Brightness => match current_snapshot().await.brightness {
+            Valid(brightness) => brightness.to_tuples(),
+            Unavailable => brightness::latest().await?.to_tuples(),
+        },
+        TupleName::Bluetooth => match current_snapshot().await.bluetooth {
+            Valid(bluetooth) => bluetooth.to_tuples(),
+            Unavailable => bluetooth::latest().await?.to_tuples(),
+        },
         TupleName::Battery => battery::latest().await?.to_tuples(),
         TupleName::Ram => ram::latest().await?.to_tuples(),
         TupleName::FanProfile => fan_profile::latest().await?.to_tuples(), // Special case since the OS changes fan mode when plugging/unplugging AC
