@@ -82,6 +82,14 @@ polling_rate = 2000
 
 <br/>
 
+## Performance
+This daemon is very performance light, `journalctl` recently monitored the daemon and returned: `bar_daemon.service: Consumed 4.181s CPU time over 25min 34.911s wall clock time, 15.7M memory peak.`
+This means that the daemon only uses a few megabytes of memory and a tiny amount of CPU time, so it will not effect system performance in any noticable way.
+
+
+<br/><br/>
+
+
 ## Requirements
 
 * `wpctl` (Pipewire) for volume control
