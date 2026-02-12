@@ -1,4 +1,5 @@
 use Observed::{Unavailable, Valid};
+use tracing::warn;
 
 use crate::{monitored::Monitored, tuples::ToTuples};
 
@@ -93,6 +94,50 @@ impl<T: Default> Observed<T> {
         match self {
             Valid(v) => v,
             Unavailable => T::default(),
+        }
+    }
+}
+
+// Result-like functions
+
+impl<T> Observed<T> {
+    pub fn from_result<E: std::fmt::Display>(res: Result<T, E>) -> Self {
+        match res {
+            Ok(v) => Observed::Valid(v),
+            Err(e) => {
+                warn!("{e}");
+                Observed::Unavailable
+            }
+        }
+    }
+}
+
+impl<T, E: std::fmt::Display> From<Result<T, E>> for Observed<T> {
+    fn from(value: Result<T, E>) -> Self {
+        Observed::from_result(value)
+    }
+}
+
+// Map functions
+impl<T> Observed<T> {
+    pub fn map<F: Fn(T) -> U, U>(self, f: F) -> Observed<U> {
+        match self {
+            Valid(v) => Valid(f(v)),
+            Unavailable => Unavailable,
+        }
+    }
+
+    pub fn map_or<F: Fn(T) -> U, U>(self, default: U, f: F) -> U {
+        match self {
+            Valid(v) => f(v),
+            Unavailable => default,
+        }
+    }
+
+    pub fn map_or_else<F: Fn(T) -> U, D: Fn() -> U, U>(self, default: D, f: F) -> U {
+        match self {
+            Valid(v) => f(v),
+            Unavailable => default(),
         }
     }
 }

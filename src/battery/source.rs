@@ -1,20 +1,21 @@
 use std::str::Split;
 
-use tracing::instrument;
+use tracing::{instrument, warn};
 
 use super::value::{Battery, BatteryState};
 use crate::{
     battery, command,
     error::DaemonError,
+    observed::Observed::{self, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
 };
 
 pub trait BatterySource {
     // Read from commands (Get latest values)
-    fn read(&self) -> impl std::future::Future<Output = Result<Battery, DaemonError>> + Send;
-    fn read_state(&self) -> impl std::future::Future<Output = Result<BatteryState, DaemonError>> + Send;
-    fn read_percent(&self) -> impl std::future::Future<Output = Result<u32, DaemonError>> + Send;
-    fn read_time(&self) -> impl std::future::Future<Output = Result<String, DaemonError>> + Send;
+    fn read(&self) -> impl std::future::Future<Output = Result<Observed<Battery>, DaemonError>> + Send;
+    fn read_state(&self) -> impl std::future::Future<Output = Result<Observed<BatteryState>, DaemonError>> + Send;
+    fn read_percent(&self) -> impl std::future::Future<Output = Result<Observed<u32>, DaemonError>> + Send;
+    fn read_time(&self) -> impl std::future::Future<Output = Result<Observed<String>, DaemonError>> + Send;
 }
 
 // -------------- Default Source ---------------
@@ -24,7 +25,7 @@ pub fn default_source() -> impl BatterySource {
     AcpiBattery
 }
 
-pub async fn latest() -> Result<Battery, DaemonError> {
+pub async fn latest() -> Result<Observed<Battery>, DaemonError> {
     default_source().read().await
 }
 
@@ -35,17 +36,22 @@ pub struct AcpiBattery;
 
 impl BatterySource for AcpiBattery {
     #[instrument]
-    async fn read(&self) -> Result<Battery, DaemonError> {
-        // Get ACPI output and split it into sections
-        let output = get_acpi_output()?;
-        let output_split = get_acpi_split(&output);
+    async fn read(&self) -> Result<Observed<Battery>, DaemonError> {
+        fn read_inner() -> Result<Battery, DaemonError> {
+            // Get ACPI output and split it into sections
+            let output = get_acpi_output()?;
+            let output_split = get_acpi_split(&output);
 
-        // Parse the state, percentage, and time remaining
-        let battery = Battery {
-            state: get_state_from_acpi_split(output_split.clone())?,
-            percent: get_percent_from_acpi_split(output_split.clone())?,
-            time: get_time_from_acpi_split(output_split)?,
-        };
+            // Parse the state, percentage, and time remaining
+            Ok(Battery {
+                state: get_state_from_acpi_split(output_split.clone())?,
+                percent: get_percent_from_acpi_split(output_split.clone())?,
+                time: get_time_from_acpi_split(output_split)?,
+            })
+        }
+
+        // Set as unavailable if the inner function threw an error
+        let battery: Observed<Battery> = read_inner().into();
 
         // Update current snapshot
         let update = update_snapshot(battery.clone()).await;
@@ -57,61 +63,91 @@ impl BatterySource for AcpiBattery {
     }
 
     #[instrument]
-    async fn read_state(&self) -> Result<BatteryState, DaemonError> {
-        // Get ACPI output and split it into sections
-        let output = get_acpi_output()?;
-        let output_split = get_acpi_split(&output);
+    async fn read_state(&self) -> Result<Observed<BatteryState>, DaemonError> {
+        fn read_state_inner() -> Result<BatteryState, DaemonError> {
+            // Get ACPI output and split it into sections
+            let output = get_acpi_output()?;
+            let output_split = get_acpi_split(&output);
 
-        let state = get_state_from_acpi_split(output_split)?;
+            get_state_from_acpi_split(output_split)
+        }
+
+        // If there was an error, keep as unavailable, if not then map to entire struct
+        let battery = match read_state_inner().into() {
+            Valid(state) => {
+                let battery = current_snapshot().await.battery.unwrap_or_default();
+                Valid(Battery { state, ..battery })
+            }
+            Unavailable => Unavailable,
+        };
 
         // Update current snapshot
-        let battery = current_snapshot().await.battery.unwrap_or_default();
-        let update = update_snapshot(Battery { state, ..battery }).await;
+        let update = update_snapshot(battery.clone()).await;
 
         // Perform notification checks and create notification if needed
         battery::notify(update).await?;
 
-        Ok(state)
+        Ok(battery.map(|battery| battery.state))
     }
 
     #[instrument]
-    async fn read_percent(&self) -> Result<u32, DaemonError> {
-        // Get ACPI output and split it into sections
-        let output = get_acpi_output()?;
-        let output_split = get_acpi_split(&output);
+    async fn read_percent(&self) -> Result<Observed<u32>, DaemonError> {
+        fn read_percent_inner() -> Result<u32, DaemonError> {
+            // Get ACPI output and split it into sections
+            let output = get_acpi_output()?;
+            let output_split = get_acpi_split(&output);
 
-        let percent = get_percent_from_acpi_split(output_split)?;
+            get_percent_from_acpi_split(output_split)
+        }
+
+        // If there was an error, keep as unavailable, if not then map to entire struct
+        let battery = match read_percent_inner().into() {
+            Valid(percent) => {
+                let battery = current_snapshot().await.battery.unwrap_or_default();
+
+                Valid(Battery { percent, ..battery })
+            }
+            Unavailable => Unavailable,
+        };
 
         // Update current snapshot
-        let battery = current_snapshot().await.battery.unwrap_or_default();
-        let update = update_snapshot(Battery { percent, ..battery }).await;
+        let update = update_snapshot(battery.clone()).await;
 
         // Perform notification checks and create notification if needed
         battery::notify(update).await?;
 
-        Ok(percent)
+        Ok(battery.map(|battery| battery.percent))
     }
 
     #[instrument]
-    async fn read_time(&self) -> Result<String, DaemonError> {
-        // Get ACPI output and split it into sections
-        let output = get_acpi_output()?;
-        let output_split = get_acpi_split(&output);
+    async fn read_time(&self) -> Result<Observed<String>, DaemonError> {
+        fn read_time_inner() -> Result<String, DaemonError> {
+            // Get ACPI output and split it into sections
+            let output = get_acpi_output()?;
+            let output_split = get_acpi_split(&output);
 
-        let time = get_time_from_acpi_split(output_split)?;
+            get_time_from_acpi_split(output_split)
+        }
+
+        // If there was an error, keep as unavailable, if not then map to entire struct
+        let battery = match read_time_inner().into() {
+            Valid(time) => {
+                let battery = current_snapshot().await.battery.unwrap_or_default();
+                Valid(Battery {
+                    time: time.clone(),
+                    ..battery
+                })
+            }
+            Unavailable => Unavailable,
+        };
 
         // Update current snapshot
-        let battery = current_snapshot().await.battery.unwrap_or_default();
-        let update = update_snapshot(Battery {
-            time: time.clone(),
-            ..battery
-        })
-        .await;
+        let update = update_snapshot(battery.clone()).await;
 
         // Perform notification checks and create notification if needed
         battery::notify(update).await?;
 
-        Ok(time)
+        Ok(battery.map(|battery| battery.time))
     }
 }
 

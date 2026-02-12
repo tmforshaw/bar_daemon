@@ -52,7 +52,7 @@ pub async fn current_snapshot() -> Snapshot {
 
 #[must_use]
 #[instrument]
-pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: M) -> MonitoredUpdate<M> {
+pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: Observed<M>) -> MonitoredUpdate<M> {
     let mut snapshot = CURRENT_SNAPSHOT.write().await;
     update_monitored(&mut snapshot, new_value)
 }
