@@ -7,12 +7,13 @@ use crate::{
     config::get_config,
     error::DaemonError,
     monitored::Monitored,
+    observed::Observed,
     snapshot::{IntoSnapshotEvent, update_snapshot},
 };
 
 pub trait Polled: Monitored {
     // Get the latest information about this value
-    fn poll() -> impl std::future::Future<Output = Result<Self, DaemonError>> + Send;
+    fn poll() -> impl std::future::Future<Output = Result<Observed<Self>, DaemonError>> + Send;
 
     // TODO Can add seperate polling rates for each polled value
     #[must_use]
@@ -27,7 +28,7 @@ pub trait Polled: Monitored {
 macro_rules! impl_polled {
     ($type_name:ident, $module_name:ident) => {
         impl Polled for $type_name {
-            async fn poll() -> Result<Self, DaemonError> {
+            async fn poll() -> Result<Observed<Self>, DaemonError> {
                 $crate::$module_name::latest().await
             }
         }

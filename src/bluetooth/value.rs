@@ -84,7 +84,7 @@ impl ToTuples for Bluetooth {
 /// Returns an error if notification command could not be run
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonError> {
-    fn do_notification(new: Bluetooth) -> Result<(), DaemonError> {
+    fn do_notification(new: &Bluetooth) -> Result<(), DaemonError> {
         command::run(
             "dunstify",
             &[
@@ -113,7 +113,7 @@ pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonErro
                 format!("{NOTIFICATION_ID}").as_str(),
                 "-t",
                 get_config().notification_timeout.to_string().as_str(),
-                format!("Bluetooth Unavailable").as_str(),
+                "Bluetooth Unavailable",
             ],
         )?;
 
@@ -124,7 +124,7 @@ pub async fn notify(update: MonitoredUpdate<Bluetooth>) -> Result<(), DaemonErro
     if update.old != update.new {
         // If the new values are valid
         match update.new {
-            Valid(new) => do_notification(new)?,
+            Valid(new) => do_notification(&new)?,
             Unavailable => do_notification_unavailable()?,
         }
     }

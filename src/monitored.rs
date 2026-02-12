@@ -1,7 +1,7 @@
 use tracing::{debug, instrument};
 
 use crate::{
-    observed::Observed::{self, Valid},
+    observed::Observed::{self},
     snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event},
 };
 

@@ -117,7 +117,7 @@ impl ToTuples for Volume {
 /// Returns an error if notification command could not be run
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> {
-    fn do_notification(new: Volume) -> Result<(), DaemonError> {
+    fn do_notification(new: &Volume) -> Result<(), DaemonError> {
         command::run(
             "dunstify",
             &[
@@ -158,7 +158,7 @@ pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> 
     if update.old != update.new {
         // If the new values are valid
         match update.new {
-            Valid(new) => do_notification(new)?,
+            Valid(new) => do_notification(&new)?,
             Unavailable => do_notification_unavailable()?,
         }
     }

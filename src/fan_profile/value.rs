@@ -103,7 +103,7 @@ impl ToTuples for FanProfile {
 /// Returns an error if the requested value could not be parsed
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<FanProfile>) -> Result<(), DaemonError> {
-    fn do_notification(new: FanProfile) -> Result<(), DaemonError> {
+    fn do_notification(new: &FanProfile) -> Result<(), DaemonError> {
         command::run(
             "dunstify",
             &[
@@ -134,7 +134,7 @@ pub async fn notify(update: MonitoredUpdate<FanProfile>) -> Result<(), DaemonErr
                 FanProfile::get_icon().as_str(),
                 "-r",
                 NOTIFICATION_ID.to_string().as_str(),
-                format!("Fan Profile Unavailable").as_str(),
+                "Fan Profile Unavailable",
             ],
         )?;
 
@@ -145,7 +145,7 @@ pub async fn notify(update: MonitoredUpdate<FanProfile>) -> Result<(), DaemonErr
     if update.old != update.new {
         // If the new values are valid
         match update.new {
-            Valid(new) => do_notification(new)?,
+            Valid(new) => do_notification(&new)?,
             Unavailable => do_notification_unavailable()?,
         }
     }
@@ -169,12 +169,13 @@ pub async fn evaluate_item(
 
         DaemonReply::Value { item, value }
     } else {
-        // Get value
-        let profile = current_snapshot()
-            .await
-            .fan_profile
-            .map(|fan_profile| FAN_STATE_STRINGS[fan_profile.profile as usize])
-            .to_string();
+        // Get value (Try getting latest once if its unavailable)
+        let profile = match current_snapshot().await.fan_profile {
+            Valid(fan_profile) => Valid(fan_profile),
+            Unavailable => latest().await?,
+        }
+        .map(|fan_profile| FAN_STATE_STRINGS[fan_profile.profile as usize])
+        .to_string();
 
         match fan_profile_item {
             FanProfileItem::Profile => DaemonReply::Value { item, value: profile },

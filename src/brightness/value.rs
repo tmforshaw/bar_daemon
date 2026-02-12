@@ -114,7 +114,7 @@ impl ToTuples for Brightness {
 /// Returns an error if the requested value could not be parsed
 #[instrument]
 pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Result<(), DaemonError> {
-    fn do_notification(new: Brightness, device_id: &str) -> Result<(), DaemonError> {
+    fn do_notification(new: &Brightness, device_id: &str) -> Result<(), DaemonError> {
         command::run(
             "dunstify",
             &[
@@ -161,7 +161,7 @@ pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Res
     if update.old != update.new {
         // If the new values are valid
         match update.new {
-            Valid(new) => do_notification(new, device_id)?,
+            Valid(new) => do_notification(&new, device_id)?,
             Unavailable => do_notification_unavailable(device_id)?,
         }
     }

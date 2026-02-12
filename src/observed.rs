@@ -1,7 +1,7 @@
 use Observed::{Unavailable, Valid};
 use tracing::warn;
 
-use crate::{monitored::Monitored, tuples::ToTuples};
+use crate::tuples::ToTuples;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Observed<T> {
@@ -25,8 +25,8 @@ impl<T: ToTuples> Observed<T> {
 impl<T: std::fmt::Debug> std::fmt::Display for Observed<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Observed::Valid(v) => write!(f, "{v:?}"),
-            Observed::Unavailable => write!(f, "?"),
+            Self::Valid(v) => write!(f, "{v:?}"),
+            Self::Unavailable => write!(f, "?"),
         }
     }
 }
@@ -45,6 +45,7 @@ impl<T> Observed<T> {
 
     /// # Panics
     /// Panics if `self` is `Unavailable`
+    #[must_use]
     pub fn expect(self, msg: &str) -> T {
         match self {
             Valid(v) => v,
@@ -52,6 +53,7 @@ impl<T> Observed<T> {
         }
     }
 
+    #[must_use]
     pub fn unwrap_or(self, default: T) -> T {
         match self {
             Valid(v) => v,
@@ -59,6 +61,7 @@ impl<T> Observed<T> {
         }
     }
 
+    #[must_use]
     pub fn unwrap_or_else<F: Fn() -> T>(self, f: F) -> T {
         match self {
             Valid(v) => v,
@@ -66,14 +69,17 @@ impl<T> Observed<T> {
         }
     }
 
+    #[must_use]
     pub fn is_valid(self) -> bool {
         matches!(self, Self::Valid(_))
     }
 
+    #[must_use]
     pub fn is_unavailable(self) -> bool {
         matches!(self, Self::Unavailable)
     }
 
+    #[must_use]
     pub fn is_valid_or<F: Fn() -> bool>(self, f: F) -> bool {
         match self {
             Valid(_) => true,
@@ -81,6 +87,7 @@ impl<T> Observed<T> {
         }
     }
 
+    #[must_use]
     pub fn is_unavailable_or<F: Fn(T) -> bool>(self, f: F) -> bool {
         match self {
             Valid(v) => f(v),
@@ -90,6 +97,7 @@ impl<T> Observed<T> {
 }
 
 impl<T: Default> Observed<T> {
+    #[must_use]
     pub fn unwrap_or_default(self) -> T {
         match self {
             Valid(v) => v,
@@ -101,12 +109,13 @@ impl<T: Default> Observed<T> {
 // Result-like functions
 
 impl<T> Observed<T> {
+    #[must_use]
     pub fn from_result<E: std::fmt::Display>(res: Result<T, E>) -> Self {
         match res {
-            Ok(v) => Observed::Valid(v),
+            Ok(v) => Self::Valid(v),
             Err(e) => {
                 warn!("{e}");
-                Observed::Unavailable
+                Self::Unavailable
             }
         }
     }
@@ -114,12 +123,13 @@ impl<T> Observed<T> {
 
 impl<T, E: std::fmt::Display> From<Result<T, E>> for Observed<T> {
     fn from(value: Result<T, E>) -> Self {
-        Observed::from_result(value)
+        Self::from_result(value)
     }
 }
 
 // Map functions
 impl<T> Observed<T> {
+    #[must_use]
     pub fn map<F: Fn(T) -> U, U>(self, f: F) -> Observed<U> {
         match self {
             Valid(v) => Valid(f(v)),
@@ -127,13 +137,15 @@ impl<T> Observed<T> {
         }
     }
 
-    pub fn map_unavailable<F: Fn() -> T>(self, f: F) -> Observed<T> {
+    #[must_use]
+    pub fn map_unavailable<F: Fn() -> T>(self, f: F) -> Self {
         match self {
             Valid(v) => Valid(v),
             Unavailable => Valid(f()),
         }
     }
 
+    #[must_use]
     pub fn map_or<F: Fn(T) -> U, U>(self, default: U, f: F) -> U {
         match self {
             Valid(v) => f(v),
@@ -141,6 +153,7 @@ impl<T> Observed<T> {
         }
     }
 
+    #[must_use]
     pub fn map_or_else<F: Fn(T) -> U, D: Fn() -> U, U>(self, default: D, f: F) -> U {
         match self {
             Valid(v) => f(v),
