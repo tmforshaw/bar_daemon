@@ -162,31 +162,22 @@ pub async fn evaluate_item(
     value: Option<String>,
 ) -> Result<DaemonReply, DaemonError> {
     Ok(if let Some(value) = value {
-        let prev_fan_profile = current_snapshot().await.fan_profile.unwrap_or(latest().await?);
-
         // Set value
         if matches!(fan_profile_item, FanProfileItem::Profile) {
             default_source().set_profile(value.as_str()).await?;
         }
 
-        let new_profile = FanProfile {
-            profile: FAN_STATE_STRINGS
-                .iter()
-                .position(|&profile| profile == value)
-                .ok_or_else(|| DaemonError::ParseError(value.clone()))?
-                .into(),
-        };
-
         DaemonReply::Value { item, value }
     } else {
         // Get value
-        let fan_profile = current_snapshot().await.fan_profile.unwrap_or(latest().await?);
+        let profile = current_snapshot()
+            .await
+            .fan_profile
+            .map(|fan_profile| FAN_STATE_STRINGS[fan_profile.profile as usize])
+            .to_string();
 
         match fan_profile_item {
-            FanProfileItem::Profile => DaemonReply::Value {
-                item,
-                value: FAN_STATE_STRINGS[fan_profile.profile as usize].to_string(),
-            },
+            FanProfileItem::Profile => DaemonReply::Value { item, value: profile },
             FanProfileItem::Icon => DaemonReply::Value {
                 item,
                 value: FanProfile::get_icon(),

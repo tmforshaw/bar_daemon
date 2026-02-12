@@ -213,41 +213,37 @@ pub async fn evaluate_item(
             _ => {}
         }
 
-        // Notifications are done in the set_* functions
-
         DaemonReply::Value { item, value }
     } else {
         match brightness_item {
             BrightnessItem::Monitor => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.brightness {
-                    Valid(brightness) => Ok(brightness.monitor),
-                    Unavailable => default_source().read_monitor().await,
-                }?
-                .to_string(),
+                    Valid(brightness) => brightness.monitor.to_string(),
+                    Unavailable => default_source().read_monitor().await?.to_string(),
+                },
             },
             BrightnessItem::Keyboard => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.brightness {
-                    Valid(brightness) => Ok(brightness.keyboard),
-                    Unavailable => default_source().read_keyboard().await,
-                }?
-                .to_string(),
+                    Valid(brightness) => brightness.keyboard.to_string(),
+                    Unavailable => default_source().read_keyboard().await?.to_string(),
+                },
             },
-            BrightnessItem::Icon | BrightnessItem::All => {
-                let brightness = current_snapshot().await.brightness.unwrap_or(latest().await?);
-
-                match brightness_item {
-                    BrightnessItem::Icon => DaemonReply::Value {
-                        item,
-                        value: brightness.get_icon(MONITOR_ID),
-                    },
-                    _ => DaemonReply::Tuples {
-                        item,
-                        tuples: brightness.to_tuples(),
-                    },
-                }
-            }
+            BrightnessItem::Icon => DaemonReply::Value {
+                item,
+                value: match current_snapshot().await.brightness {
+                    Valid(brightness) => brightness.get_icon(MONITOR_ID),
+                    Unavailable => latest().await?.map(|brightness| brightness.get_icon(MONITOR_ID)).to_string(),
+                },
+            },
+            BrightnessItem::All => DaemonReply::Tuples {
+                item,
+                tuples: match current_snapshot().await.brightness {
+                    Valid(brightness) => brightness.to_tuples(),
+                    Unavailable => latest().await?.to_tuples(),
+                },
+            },
         }
     })
 }

@@ -152,25 +152,21 @@ pub async fn evaluate_item(
             BluetoothItem::State => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.bluetooth {
-                    Valid(bluetooth) => Ok(bluetooth.state),
-                    Unavailable => default_source().read_state().await,
-                }?
-                .to_string(),
+                    Valid(bluetooth) => bluetooth.state.to_string(),
+                    Unavailable => default_source().read_state().await?.to_string(),
+                },
             },
-            BluetoothItem::Icon | BluetoothItem::All => {
-                let bluetooth = latest().await?;
-
-                match bluetooth_item {
-                    BluetoothItem::Icon => DaemonReply::Value {
-                        item,
-                        value: bluetooth.get_icon(),
-                    },
-                    _ => DaemonReply::Tuples {
-                        item,
-                        tuples: bluetooth.to_tuples(),
-                    },
-                }
-            }
+            BluetoothItem::Icon => DaemonReply::Value {
+                item,
+                value: match current_snapshot().await.bluetooth {
+                    Valid(bluetooth) => bluetooth.get_icon(),
+                    Unavailable => latest().await?.map(|bluetooth| bluetooth.get_icon()).to_string(),
+                },
+            },
+            BluetoothItem::All => DaemonReply::Tuples {
+                item,
+                tuples: latest().await?.to_tuples(),
+            },
         }
     })
 }

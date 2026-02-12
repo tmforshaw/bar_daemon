@@ -189,33 +189,28 @@ pub async fn evaluate_item(
             VolumeItem::Percent => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.volume {
-                    Valid(volume) => Ok(volume.percent),
-                    Unavailable => default_source().read_percent().await,
-                }?
-                .to_string(),
+                    Valid(volume) => volume.percent.to_string(),
+                    Unavailable => default_source().read_percent().await?.to_string(),
+                },
             },
             VolumeItem::Mute => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.volume {
-                    Valid(volume) => Ok(volume.mute),
-                    Unavailable => default_source().read_mute().await,
-                }?
-                .to_string(),
+                    Valid(volume) => volume.mute.to_string(),
+                    Unavailable => default_source().read_mute().await?.to_string(),
+                },
             },
-            VolumeItem::Icon | VolumeItem::All => {
-                let volume = current_snapshot().await.volume.unwrap_or(latest().await?);
-
-                match volume_item {
-                    VolumeItem::Icon => DaemonReply::Value {
-                        item,
-                        value: volume.get_icon(),
-                    },
-                    _ => DaemonReply::Tuples {
-                        item,
-                        tuples: volume.to_tuples(),
-                    },
-                }
-            }
+            VolumeItem::Icon => DaemonReply::Value {
+                item,
+                value: match current_snapshot().await.volume {
+                    Valid(volume) => volume.get_icon(),
+                    Unavailable => latest().await?.map(|volume| volume.get_icon()).to_string(),
+                },
+            },
+            VolumeItem::All => DaemonReply::Tuples {
+                item,
+                tuples: latest().await?.to_tuples(),
+            },
         }
     })
 }

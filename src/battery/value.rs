@@ -237,7 +237,11 @@ pub async fn evaluate_item(item: DaemonItem, battery_item: &BatteryItem) -> Resu
         match battery_item {
             BatteryItem::State => DaemonReply::Value {
                 item,
-                value: BAT_STATE_STRINGS[default_source().read_state().await? as usize].to_string(),
+                value: default_source()
+                    .read_state()
+                    .await?
+                    .map(|state| BAT_STATE_STRINGS[state as usize])
+                    .to_string(),
             },
             BatteryItem::Percent => DaemonReply::Value {
                 item,
@@ -245,11 +249,11 @@ pub async fn evaluate_item(item: DaemonItem, battery_item: &BatteryItem) -> Resu
             },
             BatteryItem::Time => DaemonReply::Value {
                 item,
-                value: default_source().read_time().await?,
+                value: default_source().read_time().await?.to_string(),
             },
             BatteryItem::Icon => DaemonReply::Value {
                 item,
-                value: latest().await?.get_icon(),
+                value: latest().await?.map(|battery| battery.get_icon()).to_string(),
             },
             BatteryItem::All => DaemonReply::Tuples {
                 item,

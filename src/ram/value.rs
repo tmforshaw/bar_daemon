@@ -99,26 +99,23 @@ pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<Daemo
             RamItem::Total => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
-                    Valid(ram) => Ok(ram.total),
-                    Unavailable => default_source().read_total().await,
-                }?
-                .to_string(),
+                    Valid(ram) => ram.total.to_string(),
+                    Unavailable => default_source().read_total().await?.to_string(),
+                },
             },
             RamItem::Used => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
-                    Valid(ram) => Ok(ram.used),
-                    Unavailable => default_source().read_used().await,
-                }?
-                .to_string(),
+                    Valid(ram) => ram.used.to_string(),
+                    Unavailable => default_source().read_used().await?.to_string(),
+                },
             },
             RamItem::Percent => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
-                    Valid(ram) => Ok(ram.percent),
-                    Unavailable => default_source().read_percent().await,
-                }?
-                .to_string(),
+                    Valid(ram) => ram.percent.to_string(),
+                    Unavailable => default_source().read_percent().await?.to_string(),
+                },
             },
             RamItem::Icon => DaemonReply::Value {
                 item,
@@ -126,7 +123,7 @@ pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<Daemo
             },
             RamItem::All => DaemonReply::Tuples {
                 item,
-                tuples: current_snapshot().await.ram.unwrap_or(latest().await?).to_tuples(),
+                tuples: latest().await?.to_tuples(),
             },
         },
     )
