@@ -83,7 +83,17 @@ polling_rate = 2000
 <br/>
 
 ## Performance
-This daemon is very performance light, `journalctl` recently monitored the daemon and returned: `bar_daemon.service: Consumed 4.181s CPU time over 25min 34.911s wall clock time, 15.7M memory peak.`
+This daemon is very performance light, The last few outputs of `journalctl` are as follows:
+
+`bar_daemon.service: Consumed 4.181s CPU time over 25min 34.911s wall clock time, 15.7M memory peak.`
+
+`bar_daemon.service: Consumed 15.332s CPU time over 1h 31min 20.089s wall clock time, 7.2M memory peak.`
+
+`bar_daemon.service: Consumed 1min 30.738s CPU time over 3h 35min 2.319s wall clock time, 15.8M memory peak.`
+
+`bar_daemon.service: Consumed 35.898s CPU time over 1h 10min 6.469s wall clock time, 17.6M memory peak.`
+
+
 This means that the daemon only uses a few megabytes of memory and a tiny amount of CPU time, so it will not effect system performance in any noticable way.
 
 
