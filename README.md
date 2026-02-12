@@ -78,9 +78,6 @@ notification_timeout = 1000
 
 # Polling rate for polled values (in milliseconds)
 polling_rate = 2000
-
-# Location of the log file
-log_file = ".cache/bar_daemon/bar_daemon.log"
 ```
 
 <br/>
