@@ -77,7 +77,11 @@ impl RamSource for ProcpsRam {
         // If there was an error, keep as unavailable, if not then map to monitored value
         let ram = match read_total_inner().into() {
             Valid(total) => {
-                let ram = current_snapshot().await.ram.unwrap_or_default();
+                let ram = match current_snapshot().await.ram {
+                    Valid(ram) => Valid(ram),
+                    Unavailable => latest().await?,
+                }
+                .unwrap_or_default();
 
                 Valid(Ram { total, ..ram })
             }
@@ -105,7 +109,11 @@ impl RamSource for ProcpsRam {
         // If there was an error, keep as unavailable, if not then map to monitored value
         let ram = match read_used_inner().into() {
             Valid(used) => {
-                let ram = current_snapshot().await.ram.unwrap_or_default();
+                let ram = match current_snapshot().await.ram {
+                    Valid(ram) => Valid(ram),
+                    Unavailable => latest().await?,
+                }
+                .unwrap_or_default();
 
                 Valid(Ram { used, ..ram })
             }
@@ -136,7 +144,11 @@ impl RamSource for ProcpsRam {
         // If there was an error, keep as unavailable, if not then map to monitored value
         let ram = match read_percent_inner().into() {
             Valid(percent) => {
-                let ram = current_snapshot().await.ram.unwrap_or_default();
+                let ram = match current_snapshot().await.ram {
+                    Valid(ram) => Valid(ram),
+                    Unavailable => latest().await?,
+                }
+                .unwrap_or_default();
 
                 Valid(Ram { percent, ..ram })
             }

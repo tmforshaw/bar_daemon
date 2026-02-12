@@ -75,7 +75,12 @@ impl BatterySource for AcpiBattery {
         // If there was an error, keep as unavailable, if not then map to entire monitored value
         let battery = match read_state_inner().into() {
             Valid(state) => {
-                let battery = current_snapshot().await.battery.unwrap_or_default();
+                let battery = match current_snapshot().await.battery {
+                    Valid(battery) => Valid(battery),
+                    Unavailable => latest().await?,
+                }
+                .unwrap_or_default();
+
                 Valid(Battery { state, ..battery })
             }
             Unavailable => Unavailable,
@@ -103,7 +108,11 @@ impl BatterySource for AcpiBattery {
         // If there was an error, keep as unavailable, if not then map to entire monitored value
         let battery = match read_percent_inner().into() {
             Valid(percent) => {
-                let battery = current_snapshot().await.battery.unwrap_or_default();
+                let battery = match current_snapshot().await.battery {
+                    Valid(battery) => Valid(battery),
+                    Unavailable => latest().await?,
+                }
+                .unwrap_or_default();
 
                 Valid(Battery { percent, ..battery })
             }
@@ -132,7 +141,12 @@ impl BatterySource for AcpiBattery {
         // If there was an error, keep as unavailable, if not then map to entire monitored value
         let battery = match read_time_inner().into() {
             Valid(time) => {
-                let battery = current_snapshot().await.battery.unwrap_or_default();
+                let battery = match current_snapshot().await.battery {
+                    Valid(battery) => Valid(battery),
+                    Unavailable => latest().await?,
+                }
+                .unwrap_or_default();
+
                 Valid(Battery {
                     time: time.clone(),
                     ..battery

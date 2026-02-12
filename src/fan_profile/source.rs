@@ -4,7 +4,7 @@ use crate::{
     command,
     error::DaemonError,
     fan_profile,
-    observed::Observed::{self, Valid},
+    observed::Observed::{self, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
 };
 
@@ -86,7 +86,7 @@ impl FanProfileSource for AsusctlFanProfile {
     async fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError> {
         let fan_profile = match current_snapshot().await.fan_profile {
             Valid(fan_profile) => Valid(fan_profile),
-            Observed::Unavailable => latest().await?,
+            Unavailable => latest().await?,
         };
 
         let new_profile_idx;
@@ -98,6 +98,7 @@ impl FanProfileSource for AsusctlFanProfile {
             // A new profile has been set
             profile_str.trim()
         } else {
+            // TODO Should have some sort of last known value
             let profile = fan_profile.clone().unwrap_or_default().profile;
 
             // Profile is set via cyclic function

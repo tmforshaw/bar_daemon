@@ -77,10 +77,11 @@ impl BrightnessSource for BctlBrightness {
 
         // If there was an error, keep as unavailable, if not then map to entire monitored value
         let brightness = match read_monitor_inner().into() {
-            Valid(monitor) => {
-                let brightness = current_snapshot().await.brightness.unwrap_or_default();
-                Valid(Brightness { monitor, ..brightness })
+            Valid(monitor) => match current_snapshot().await.brightness {
+                Valid(brightness) => Valid(brightness),
+                Unavailable => latest().await?,
             }
+            .map(|brightness| Brightness { monitor, ..brightness }),
             Unavailable => Unavailable,
         };
 
@@ -101,10 +102,11 @@ impl BrightnessSource for BctlBrightness {
         }
 
         let brightness = match read_keyboard_inner().into() {
-            Valid(keyboard) => {
-                let brightness = current_snapshot().await.brightness.unwrap_or_default();
-                Valid(Brightness { keyboard, ..brightness })
+            Valid(keyboard) => match current_snapshot().await.brightness {
+                Valid(brightness) => Valid(brightness),
+                Unavailable => latest().await?,
             }
+            .map(|brightness| Brightness { keyboard, ..brightness }),
             Unavailable => Unavailable,
         };
 
@@ -123,13 +125,10 @@ impl BrightnessSource for BctlBrightness {
 
         // Get snapshot brightness and set new monitor, or get entire latest()
         let brightness = match current_snapshot().await.brightness {
-            Valid(brightness) => match default_source().read_monitor().await? {
-                Valid(new_monitor) => Valid(Brightness {
-                    monitor: new_monitor,
-                    ..brightness
-                }),
-                Unavailable => Unavailable,
-            },
+            Valid(brightness) => default_source().read_monitor().await?.map(|new_monitor| Brightness {
+                monitor: new_monitor,
+                ..brightness
+            }),
             Unavailable => latest().await?,
         };
 
@@ -151,13 +150,10 @@ impl BrightnessSource for BctlBrightness {
 
         // Get snapshot brightness and set new keyboard, or get entire latest()
         let brightness = match current_snapshot().await.brightness {
-            Valid(brightness) => match default_source().read_keyboard().await? {
-                Valid(new_keyboard) => Valid(Brightness {
-                    keyboard: new_keyboard,
-                    ..brightness
-                }),
-                Unavailable => Unavailable,
-            },
+            Valid(brightness) => default_source().read_keyboard().await?.map(|new_keyboard| Brightness {
+                keyboard: new_keyboard,
+                ..brightness
+            }),
             Unavailable => latest().await?,
         };
 

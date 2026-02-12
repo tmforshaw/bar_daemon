@@ -77,7 +77,11 @@ impl VolumeSource for WpctlVolume {
         // If there was an error, keep as unavailable, if not then map to entire monitored value
         let volume = match read_percent_inner().into() {
             Valid(percent) => {
-                let volume = current_snapshot().await.volume.unwrap_or_default();
+                let volume = match current_snapshot().await.volume {
+                    Valid(volume) => Valid(volume),
+                    Unavailable => latest().await?,
+                }
+                .unwrap_or_default();
 
                 Valid(Volume { percent, ..volume })
             }
@@ -102,7 +106,11 @@ impl VolumeSource for WpctlVolume {
         // If there was an error, keep as unavailable, if not then map to entire monitored value
         let volume = match read_mute_inner().into() {
             Valid(mute) => {
-                let volume = current_snapshot().await.volume.unwrap_or_default();
+                let volume = match current_snapshot().await.volume {
+                    Valid(volume) => Valid(volume),
+                    Unavailable => latest().await?,
+                }
+                .unwrap_or_default();
 
                 Valid(Volume { mute, ..volume })
             }
@@ -123,11 +131,11 @@ impl VolumeSource for WpctlVolume {
     #[instrument]
     async fn set_percent(&self, percent_str: &str) -> Result<(), DaemonError> {
         // Get the current snapshot values
-        let snapshot = current_snapshot().await;
-
-        // TODO probably could implement some sort of "last known value" for this
-
-        let current_volume = snapshot.volume.unwrap_or(latest().await?.unwrap_or_default());
+        let volume_observed = match current_snapshot().await.volume {
+            Valid(volume) => Valid(volume),
+            Unavailable => latest().await?,
+        };
+        let volume = volume_observed.clone().unwrap_or_default();
 
         // If the percentage is a change, figure out the true percentage
         let linear_percent = if percent_str.starts_with('+') || percent_str.starts_with('-') {
@@ -141,7 +149,7 @@ impl VolumeSource for WpctlVolume {
             )?;
 
             // Calculate the new percentage based on the state's current value
-            (i32::try_from(current_volume.percent)?
+            (i32::try_from(volume.percent)?
                 + match percent_str.chars().next() {
                     Some('+') => delta_percent,
                     Some('-') => -delta_percent,
@@ -153,9 +161,9 @@ impl VolumeSource for WpctlVolume {
         };
 
         // Update the volume in the snapshot
-        let update = update_snapshot(Valid(Volume {
+        let update = update_snapshot(volume_observed.map(|volume| Volume {
             percent: linear_percent,
-            ..current_volume
+            ..volume
         }))
         .await;
 
@@ -176,12 +184,16 @@ impl VolumeSource for WpctlVolume {
 
     #[instrument]
     async fn set_mute(&self, mute_str: &str) -> Result<(), DaemonError> {
-        let current_volume = current_snapshot().await.volume.unwrap_or(latest().await?.unwrap_or_default());
+        let volume_observed = match current_snapshot().await.volume {
+            Valid(volume) => Valid(volume),
+            Unavailable => latest().await?,
+        };
+        let volume = volume_observed.clone().unwrap_or_default();
 
         let new_mute;
 
         let mute = if mute_str == "toggle" {
-            new_mute = !current_volume.mute;
+            new_mute = !volume.mute;
 
             mute_str.to_string()
         } else {
@@ -195,9 +207,9 @@ impl VolumeSource for WpctlVolume {
         let _ = command::run("wpctl", &["set-mute", "@DEFAULT_SINK@", mute.as_str()])?;
 
         // Update the volume in the snapshot
-        let update = update_snapshot(Valid(Volume {
+        let update = update_snapshot(volume_observed.map(|volume| Volume {
             mute: new_mute,
-            ..current_volume
+            ..volume
         }))
         .await;
 
