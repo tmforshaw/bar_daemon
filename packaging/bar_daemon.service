@@ -9,6 +9,8 @@ ExecStart=/usr/bin/bar_daemon daemon
 Restart=on-failure
 Environment=HOME=%h
 WorkingDirectory=%h
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=default.target
