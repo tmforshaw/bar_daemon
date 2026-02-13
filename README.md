@@ -105,7 +105,7 @@ This means that the daemon only uses a few megabytes of memory and a tiny amount
 ```mermaid
 flowchart TD
   A[Systemd launches 'bar_daemon daemon'] --> B['init_logging' called]
-  B -- init_logging --> C[panic hook set]
+  B -- init_logging --> C[Panic hook set]
   C --> D['tracing_subscriber' created]
   
   B --> E['evaluate_cli' parses args]
@@ -128,7 +128,7 @@ flowchart TD
 
   I --> R[Spawn pollers]
   R --> S[Select listener receiver or shutdown event]
-  S -- Listener --> T[spawn 'handle_socket' for this listener]
+  S -- Listener --> T[Spawn 'handle_socket' for this listener]
 
   T -- handle_socket --> U[Select stream read or shutdown event]
   U -- Stream Read --> V{Is stream buffer empty?}
