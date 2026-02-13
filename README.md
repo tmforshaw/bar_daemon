@@ -105,24 +105,27 @@ This means that the daemon only uses a few megabytes of memory and a tiny amount
 ```mermaid
 flowchart TD
 %% ---------- Startup ----------
-  A[Systemd launches 'bar_daemon daemon'] --> B["'init_logging()'" called]
+  A[Systemd launches 'bar_daemon daemon'] --> B["init_logging()" called]
 
   subgraph INIT_LOGGING ["init_logging()"]
     C[Panic hook set]
-    C --> D['tracing_subscriber' created]
+    C --> D[tracing_subscriber created]
   end
 
   B --> C
   
-  B --> E["'evaluate_cli()'" parses args]
-  E -- Args are 'daemon' --> F["'do_daemon()'" called]
+  B --> E{"Parse CLI args with 'evaluate_cli()'"}
+  E -- "[daemon]" --> F["do_daemon()" called]
+  E -- "[listen]" --> AF[[... Handle 'listen' argument ...]]
+  E -- "[get, ...]" --> AG[[... Handle 'get' argument ...]]
+  E -- "[set, ...]" --> AH[[... Handle 'set' argument ...]]
 
 %% ---------- Daemon Setup ----------
   subgraph DO_DAEMON ["do_daemon()"]
     G[Remove existing socket file]
     G --> H[Create new listener at 'SOCKET_PATH']
-    H --> I["Spawn task to run 'handle_clients()'"]
-    I --> R[Spawn pollers]
+    H --> I["Spawn task to run handle_clients()"]
+    I --> R[Spawn poller tasks]
     R --> AE[Run Listener Accept Loop]
   end
 
@@ -130,9 +133,9 @@ flowchart TD
 
 %% ---------- Handle Clients ----------
   subgraph HANDLE_CLIENTS ["handle_clients()"]
-    J{'SnapshotEvent' or Shutdown}
+    J{SnapshotEvent or Shutdown}
   
-    J -- 'SnapshotEvent' --> K{Are there any clients?}
+    J -- SnapshotEvent --> K{Are there any clients?}
   
     K -- true --> L[Get monitored value in tuple format]
     L --> M[Convert tuple to JSON]
@@ -142,7 +145,7 @@ flowchart TD
     P --> J
   
     K -- false --> J
-    J -- Shutdown Event --> Q["Close 'handle_clients()'"]
+    J -- Shutdown Event --> Q["Close handle_clients()"]
   end
 
   I --> J
@@ -151,7 +154,7 @@ flowchart TD
   subgraph LISTENER_ACCEPT [Listener Accept Loop]
     S{Listener Receiver or Shutdown}
   
-    S -- Connection --> T["Spawn 'handle_socket()'" for this listener]
+    S -- Connection --> T["Spawn handle_socket() for this listener"]
     S -- Shutdown Event --> AD[Remove socket file]
   end
 
@@ -163,12 +166,12 @@ flowchart TD
   
     U -- Stream Read --> V{Is stream buffer empty?}
   
-    V -- true --> W["Close 'handle_socket()'"]
-    V -- false --> X[Convert bytes to 'DaemonMessage']
+    V -- true --> W["Close handle_socket()"]
+    V -- false --> X[Convert bytes to DaemonMessage]
   
-    X --> Y{Get reply from 'DaemonMessage::Get', 'DaemonMessage::Set', or 'DaemonMessage::Listen'}
-    Y -- Get --> Z["Call 'match_get_commands()'"]
-    Y -- Set --> AA["Call 'match_set_commands()'"]
+    X --> Y{Get reply from DaemonMessage type}
+    Y -- Get --> Z["Call match_get_commands()"]
+    Y -- Set --> AA["Call match_set_commands()"]
     Y -- Listen --> AB[Add client to clients list]
   
     Z --> AC[Send reply to sender]
@@ -176,9 +179,9 @@ flowchart TD
     AC --> U
   
     U -- Shutdown Event --> W
-    T --> S
   end
 
+  T --> S
   T --> U
 ```
 
