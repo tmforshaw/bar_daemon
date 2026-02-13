@@ -105,58 +105,81 @@ This means that the daemon only uses a few megabytes of memory and a tiny amount
 ```mermaid
 flowchart TD
 %% ---------- Startup ----------
-  A[Systemd launches 'bar_daemon daemon'] --> B['init_logging' called]
-  B -- init_logging --> C[Panic hook set]
-  C --> D['tracing_subscriber' created]
-  B --> E['evaluate_cli' parses args]
-  E -- Args are 'daemon' --> F['do_daemon' called]
+  A[Systemd launches 'bar_daemon daemon'] --> B["'init_logging()'" called]
+
+  subgraph INIT_LOGGING ["init_logging()"]
+    C[Panic hook set]
+    C --> D['tracing_subscriber' created]
+  end
+
+  B --> C
+  
+  B --> E["'evaluate_cli()'" parses args]
+  E -- Args are 'daemon' --> F["'do_daemon()'" called]
 
 %% ---------- Daemon Setup ----------
-  F --> G[Remove existing socket file]
-  G --> H[Create new listener at 'SOCKET_PATH']
-  H --> I[Spawn task to run 'handle_clients']
+  subgraph DO_DAEMON ["do_daemon()"]
+    G[Remove existing socket file]
+    G --> H[Create new listener at 'SOCKET_PATH']
+    H --> I["Spawn task to run 'handle_clients()'"]
+    I --> R[Spawn pollers]
+    R --> AE[Run Listener Accept Loop]
+  end
+
+  F --> G
 
 %% ---------- Handle Clients ----------
-  I -- handle_clients --> J{'SnapshotEvent' or Shutdown}
+  subgraph HANDLE_CLIENTS ["handle_clients()"]
+    J{'SnapshotEvent' or Shutdown}
+  
+    J -- 'SnapshotEvent' --> K{Are there any clients?}
+  
+    K -- true --> L[Get monitored value in tuple format]
+    L --> M[Convert tuple to JSON]
+    M --> N[Update tuples Mutex]
+    N --> O[Send JSON to all clients]
+    O --> P[Remove dead clients]
+    P --> J
+  
+    K -- false --> J
+    J -- Shutdown Event --> Q["Close 'handle_clients()'"]
+  end
 
-  J -- 'SnapshotEvent' --> K{Are there any clients?}
-
-  K -- true --> L[Get monitored value in tuple format]
-  L --> M[Convert tuple to JSON]
-  M --> N[Update tuples Mutex]
-  N --> O[Send JSON to all clients]
-  O --> P[Remove dead clients]
-  P --> J
-
-  K -- false --> J
-  J -- Shutdown Event --> Q[If shutdown notified, exit]
+  I --> J
 
 %% ---------- Listener Accept Loop ----------
-  I --> R[Spawn pollers]
-  R --> S{Listener Receiver or Shutdown}
+  subgraph LISTENER_ACCEPT [Listener Accept Loop]
+    S{Listener Receiver or Shutdown}
+  
+    S -- Connection --> T["Spawn 'handle_socket()'" for this listener]
+    S -- Shutdown Event --> AD[Remove socket file]
+  end
 
-  S -- Connection --> T[Spawn 'handle_socket' for this listener]
-  S -- Shutdown Event --> AD[Remove socket file]  
+  AE --> S
 
 %% ---------- Client Socket Task ----------
-  T -- handle_socket --> U{Stream Read or Shutdown}
+  subgraph HANDLE_SOCKET ["handle_socket()"]
+    U{Stream Read or Shutdown}
+  
+    U -- Stream Read --> V{Is stream buffer empty?}
+  
+    V -- true --> W["Close 'handle_socket()'"]
+    V -- false --> X[Convert bytes to 'DaemonMessage']
+  
+    X --> Y{Get reply from 'DaemonMessage::Get', 'DaemonMessage::Set', or 'DaemonMessage::Listen'}
+    Y -- Get --> Z["Call 'match_get_commands()'"]
+    Y -- Set --> AA["Call 'match_set_commands()'"]
+    Y -- Listen --> AB[Add client to clients list]
+  
+    Z --> AC[Send reply to sender]
+    AA --> AC
+    AC --> U
+  
+    U -- Shutdown Event --> W
+    T --> S
+  end
 
-  U -- Stream Read --> V{Is stream buffer empty?}
-
-  V -- true --> W[Close 'handle_socket']
-  V -- false --> X[Convert bytes to 'DaemonMessage']
-
-  X --> Y{Get reply from 'DaemonMessage::Get', 'DaemonMessage::Set', or 'DaemonMessage::Listen'}
-  Y -- Get --> Z[Call 'match_get_commands']
-  Y -- Set --> AA[Call 'match_set_commands']
-  Y -- Listen --> AB[Add client to clients list]
-
-  Z --> AC[Send reply to sender]
-  AA --> AC
-  AC --> U
-
-  U -- Shutdown Event --> W
-  T --> S
+  T --> U
 ```
 
 <br/><br/>
