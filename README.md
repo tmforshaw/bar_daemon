@@ -97,6 +97,57 @@ This daemon is very performance light, The last few outputs of `journalctl` are 
 This means that the daemon only uses a few megabytes of memory and a tiny amount of CPU time, so it will not effect system performance in any noticable way.
 
 
+<br/>
+
+## Process Flow Diagram
+
+### Flow Diagram for `bar_daemon daemon`
+```mermaid
+flowchart TD
+  A[Systemd launches 'bar_daemon daemon'] --> B['init_logging' called]
+  B -- init_logging --> C[panic hook set]
+  C --> D['tracing_subscriber' created]
+  
+  B --> E['evaluate_cli' parses args]
+  E -- Args are 'daemon' --> F['do_daemon' called]
+  F --> G[Remove existing socket file]
+  G --> H[Create new listener at `SOCKET_PATH`]
+  H --> I[Spawn task to run 'handle_clients']
+
+  I -- handle_clients --> J[Select 'SnapshotEvent' receiver or shutdown event]
+  J -- 'SnapshotEvent' --> K{Are there any clients?}
+  K -- true --- L[Get monitored value in tuple format]
+  L --> M[Convert tuple to JSON]
+  M --> N[Update tuples Mutex]
+  N --> O[Send JSON to all clients]
+  O --> P[Remove dead clients]
+  P --> J
+
+  K -- false --> J
+  J -- Shutdown Event --> Q[If shutdown notified, exit]
+
+  I --> R[Spawn pollers]
+  R --> S[Select listener receiver or shutdown event]
+  S -- Listener --> T[spawn 'handle_socket' for this listener]
+
+  T -- handle_socket --> U[Select stream read or shutdown event]
+  U -- Stream Read --> V{Is stream buffer empty?}
+  V -- true --> W[Close 'handle_socket']
+  V -- false --> X[Convert bytes to 'DaemonMessage']
+  X --> Y[Get reply from get/set/listen CLI commands]
+  Y -- Get --> Z[Call 'match_get_commands']
+  Y -- Set --> AA[Call 'match_set_commands']
+  Y -- Listen --> AB[Add client to clients list]
+  AB --> W
+  Z --> AC[Send reply to sender]
+  AA --> AC
+  AC --> U
+  U -- Shutdown Event --> W
+  T --> S
+
+  S -- Shutdown Event --> AD[Remove socket file]  
+```
+
 <br/><br/>
 
 
