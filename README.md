@@ -183,6 +183,19 @@ flowchart TD
 
   T --> S
   T --> U
+
+%% ---------- Spawn Poller ----------
+  subgraph SPAWN_POLLER ["spawn_poller::&lt;P&gt;()"]
+    AI{Timer Ticked or Shutdown}
+
+    AI -- Timer Tick --> AJ["Call P::poll()"]
+    AJ --> AK["Call update_snapshot(new_value)"]
+    AK --> AI
+
+    AI -- Shutdown Event --> AL["Close spawn_poller::&lt;P&gt;()"]
+  end
+
+  R --> AI
 ```
 
 <br/><br/>
