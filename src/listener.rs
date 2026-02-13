@@ -84,9 +84,8 @@ pub async fn handle_clients(
     loop {
         tokio::select! {
             Ok(event)= snapshot_rx.recv() => {
-                let clients_empty = clients.lock().await.is_empty();
-
-                if !clients_empty {
+                // If there are clients
+                if !clients.lock().await.is_empty() {
                     debug!("SnapshotEvent Received: {event:?}");
 
                     let (index, new_tuples) = match event {
