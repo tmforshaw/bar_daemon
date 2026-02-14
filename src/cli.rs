@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use tracing::{info, instrument};
+use tracing::{error, info, instrument};
 
 use crate::{
     battery::{self, BatteryGetCommands},
@@ -142,16 +142,19 @@ pub async fn evaluate_cli() -> Result<(), DaemonError> {
             SetCommands::Bluetooth { commands } => bluetooth::match_set_commands(&commands),
             SetCommands::FanProfile { commands } => fan_profile::match_set_commands(commands),
         },
-        CliCommands::Listen => {
-            listen().await?;
+        CliCommands::Listen | CliCommands::Daemon => {
+            return if let Err(e) = match cli.commands {
+                CliCommands::Listen => listen().await, // Run the listener
+                _ => do_daemon().await,                // Run the daemon
+            } {
+                // If there was an error, log it
+                error!("{e}");
 
-            return Ok(());
-        }
-        CliCommands::Daemon => {
-            do_daemon().await?;
-
-            // After the daemon has shutdown
-            return Ok(());
+                Err(e)
+            } else {
+                // Otherwise return Ok(())
+                Ok(())
+            };
         }
     };
 
