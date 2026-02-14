@@ -6,7 +6,7 @@ use tokio::{
     net::{UnixListener, UnixStream},
     sync::{Mutex, Notify},
 };
-use tracing::{info, instrument, trace};
+use tracing::{error, info, instrument, trace};
 use uuid::Uuid;
 
 use crate::{
@@ -67,6 +67,16 @@ pub enum DaemonItem {
 /// Returns an error if socket cannot be accepted
 #[instrument]
 pub async fn do_daemon() -> Result<(), DaemonError> {
+    match do_daemon_inner().await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            error!("{e}");
+            Err(e)
+        }
+    }
+}
+
+async fn do_daemon_inner() -> Result<(), DaemonError> {
     // Remove existing socket file
     if Path::new(SOCKET_PATH).exists() {
         std::fs::remove_file(SOCKET_PATH)?;
