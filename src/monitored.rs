@@ -1,5 +1,6 @@
-use std::any::type_name;
+use std::{any::type_name, time::Duration};
 
+use tokio::time::Interval;
 use tracing::{debug, info, instrument, warn};
 
 use crate::{
@@ -79,12 +80,13 @@ macro_rules! impl_monitored {
 }
 
 const READ_ATTEMPTS: u32 = 10;
+const READ_ATTEMPT_INTERVAL: Duration = Duration::from_micros(500);
 
 /// # Documentation
-/// A function for asynchronously reading the value until it is available
+/// A function for asynchronously reading the value until it is available (Meant to be used in a `tokio::spawn`)
 /// # Errors
 /// Error if `M::latest().await` returns an Err
-pub async fn read_until_available<M: Monitored + IntoSnapshotEvent>() -> Result<MonitoredUpdate<M>, DaemonError> {
+async fn read_until_available<M: Monitored + IntoSnapshotEvent>(timer: &mut Interval) -> Result<MonitoredUpdate<M>, DaemonError> {
     let snapshot = current_snapshot().await;
     let mut current: Observed<M> = M::get(&snapshot);
 
@@ -94,6 +96,9 @@ pub async fn read_until_available<M: Monitored + IntoSnapshotEvent>() -> Result<
         } else {
             break;
         }
+
+        // Wait for the timer to tick before progressing the loop
+        timer.tick().await;
     }
 
     if current.is_valid() {
@@ -107,7 +112,9 @@ pub async fn read_until_available<M: Monitored + IntoSnapshotEvent>() -> Result<
 /// Create a task which (asynchronously) keeps getting the latest value of this type, and updates the snapshot when it is Valid
 pub fn spawn_read_until_available<M: Monitored + IntoSnapshotEvent>() {
     tokio::spawn(async {
-        match read_until_available::<M>().await {
+        let mut timer = tokio::time::interval(READ_ATTEMPT_INTERVAL);
+
+        match read_until_available::<M>(&mut timer).await {
             Ok(update) => info!("Read Until Available Returned: {update:?}"),
             Err(e) => warn!("{e}"),
         }
