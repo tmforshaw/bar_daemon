@@ -92,14 +92,17 @@ async fn read_until_available<M: Monitored + IntoSnapshotEvent>(
     let snapshot = current_snapshot().await;
     let mut current: Observed<M> = M::get(&snapshot);
 
-    let mut attempts_num = READ_ATTEMPTS;
-    for i in 0..READ_ATTEMPTS {
-        if current.is_unavailable() {
-            current = M::latest().await?;
-        } else {
-            attempts_num = i + 1;
+    let mut attempts_num = 0;
+    while current.is_unavailable() {
+        attempts_num += 1;
+
+        // Only run READ_ATTEMPTS number of times
+        if attempts_num == READ_ATTEMPTS {
             break;
         }
+
+        // Get the latest value of this type
+        current = M::latest().await?;
 
         // Wait for the timer to tick before progressing the loop
         timer.tick().await;
