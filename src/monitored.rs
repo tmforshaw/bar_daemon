@@ -86,14 +86,18 @@ const READ_ATTEMPT_INTERVAL: Duration = Duration::from_micros(500);
 /// A function for asynchronously reading the value until it is available (Meant to be used in a `tokio::spawn`)
 /// # Errors
 /// Error if `M::latest().await` returns an Err
-async fn read_until_available<M: Monitored + IntoSnapshotEvent>(timer: &mut Interval) -> Result<MonitoredUpdate<M>, DaemonError> {
+async fn read_until_available<M: Monitored + IntoSnapshotEvent>(
+    timer: &mut Interval,
+) -> Result<(MonitoredUpdate<M>, u32), DaemonError> {
     let snapshot = current_snapshot().await;
     let mut current: Observed<M> = M::get(&snapshot);
 
-    for _ in 0..READ_ATTEMPTS {
+    let mut attempts_num = READ_ATTEMPTS;
+    for i in 0..READ_ATTEMPTS {
         if current.is_unavailable() {
             current = M::latest().await?;
         } else {
+            attempts_num = i + 1;
             break;
         }
 
@@ -102,9 +106,12 @@ async fn read_until_available<M: Monitored + IntoSnapshotEvent>(timer: &mut Inte
     }
 
     if current.is_valid() {
-        Ok(update_snapshot(current).await)
+        Ok((update_snapshot(current).await, attempts_num))
     } else {
-        Err(DaemonError::MonitoredReadAttemptFail(type_name::<M>().to_string()))
+        Err(DaemonError::MonitoredReadAttemptFail(
+            type_name::<M>().to_string(),
+            attempts_num,
+        ))
     }
 }
 
@@ -115,7 +122,7 @@ pub fn spawn_read_until_available<M: Monitored + IntoSnapshotEvent>() {
         let mut timer = tokio::time::interval(READ_ATTEMPT_INTERVAL);
 
         match read_until_available::<M>(&mut timer).await {
-            Ok(update) => info!("Read Until Available Returned: {update:?}"),
+            Ok((update, attempts)) => info!("Read Until Available Returned: '{:?}' after {attempts} attempts", update.new),
             Err(e) => warn!("{e}"),
         }
     });
