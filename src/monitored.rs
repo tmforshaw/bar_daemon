@@ -1,9 +1,11 @@
-use tracing::{debug, instrument};
+use std::any::type_name;
+
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     error::DaemonError,
     observed::Observed::{self},
-    snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event},
+    snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event, current_snapshot, update_snapshot},
 };
 
 #[derive(Clone, Debug)]
@@ -76,19 +78,38 @@ macro_rules! impl_monitored {
     };
 }
 
-// const READ_ATTEMPTS: u32 = 10;
+const READ_ATTEMPTS: u32 = 10;
 
-// // A function for asynchronously reading the value until it is available
-// pub async fn read_until_available<M: Monitored + IntoSnapshotEvent>() {
-//     let snapshot = current_snapshot().await;
-//     let mut current: Observed<M> = M::get(&snapshot);
+/// # Documentation
+/// A function for asynchronously reading the value until it is available
+/// # Errors
+/// Error if `M::latest().await` returns an Err
+pub async fn read_until_available<M: Monitored + IntoSnapshotEvent>() -> Result<MonitoredUpdate<M>, DaemonError> {
+    let snapshot = current_snapshot().await;
+    let mut current: Observed<M> = M::get(&snapshot);
 
-//     for i in 0..READ_ATTEMPTS {
-//         if current.is_unavailable() {
-//             // TODO
-//             // current = M::latest();
-//         } else {
-//             break;
-//         }
-//     }
-// }
+    for _ in 0..READ_ATTEMPTS {
+        if current.is_unavailable() {
+            current = M::latest().await?;
+        } else {
+            break;
+        }
+    }
+
+    if current.is_valid() {
+        Ok(update_snapshot(current).await)
+    } else {
+        Err(DaemonError::MonitoredReadAttemptFail(type_name::<M>().to_string()))
+    }
+}
+
+/// # Documentation
+/// Create a task which (asynchronously) keeps getting the latest value of this type, and updates the snapshot when it is Valid
+pub fn spawn_read_until_available<M: Monitored + IntoSnapshotEvent>() {
+    tokio::spawn(async {
+        match read_until_available::<M>().await {
+            Ok(update) => info!("Read Until Available Returned: {update:?}"),
+            Err(e) => warn!("{e}"),
+        }
+    });
+}
