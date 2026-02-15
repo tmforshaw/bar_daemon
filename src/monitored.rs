@@ -1,6 +1,7 @@
 use tracing::{debug, instrument};
 
 use crate::{
+    error::DaemonError,
     observed::Observed::{self},
     snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event},
 };
@@ -14,6 +15,8 @@ pub struct MonitoredUpdate<M: Monitored> {
 pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + 'static {
     fn get(snapshot: &Snapshot) -> Observed<Self>;
     fn set(snapshot: &mut Snapshot, new: Observed<Self>);
+
+    fn latest() -> impl std::future::Future<Output = Result<Observed<Self>, DaemonError>> + Send;
 }
 
 /// # Documentation
@@ -40,10 +43,10 @@ pub fn update_monitored<M: Monitored + IntoSnapshotEvent>(snapshot: &mut Snapsho
 }
 
 /// # Documentation
-/// Generate the `Impl` for `Monitored` using the given `type_name` and `field_name`
+/// Generate the `Impl` for `Monitored` using the given `type_name`, `field_name`, and `module_name`
 #[macro_export]
 macro_rules! impl_monitored {
-    ($type_name:ident, $field_name:ident) => {
+    ($type_name:ident, $field_name:ident, $module_name:ident) => {
         impl Monitored for $type_name {
             fn get(snapshot: &Snapshot) -> Observed<Self> {
                 // Get the given field
@@ -57,6 +60,35 @@ macro_rules! impl_monitored {
                 // Show that this snapshot happened now
                 snapshot.timestamp = std::time::Instant::now();
             }
+
+            /// # Errors
+            /// Returns an error if the latest value of `Monitored` can't be read due to parsing errors
+            async fn latest() -> Result<Observed<Self>, DaemonError> {
+                match $crate::$module_name::source::latest().await {
+                    Ok(latest) => Ok(latest),
+                    Err(e) => {
+                        error!("{e}");
+                        Err(e)
+                    }
+                }
+            }
         }
     };
 }
+
+// const READ_ATTEMPTS: u32 = 10;
+
+// // A function for asynchronously reading the value until it is available
+// pub async fn read_until_available<M: Monitored + IntoSnapshotEvent>() {
+//     let snapshot = current_snapshot().await;
+//     let mut current: Observed<M> = M::get(&snapshot);
+
+//     for i in 0..READ_ATTEMPTS {
+//         if current.is_unavailable() {
+//             // TODO
+//             // current = M::latest();
+//         } else {
+//             break;
+//         }
+//     }
+// }

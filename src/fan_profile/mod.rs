@@ -1,6 +1,3 @@
-use crate::{error::DaemonError, observed::Observed};
-use tracing::error;
-
 use source::{FAN_STATE_STRINGS, FanProfileSource, default_source};
 use value::{FanState, notify};
 
@@ -11,15 +8,3 @@ pub use value::{
 
 mod source;
 mod value;
-
-/// # Errors
-/// Returns an error if the latest `FanProfile` can't be read due to parsing errors
-pub async fn latest() -> Result<Observed<FanProfile>, DaemonError> {
-    match source::latest().await {
-        Ok(latest) => Ok(latest),
-        Err(e) => {
-            error!("{e}");
-            Err(e)
-        }
-    }
-}

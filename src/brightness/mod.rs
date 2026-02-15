@@ -1,6 +1,3 @@
-use crate::{error::DaemonError, observed::Observed};
-use tracing::error;
-
 use source::{BrightnessSource, default_source};
 use value::notify;
 
@@ -12,15 +9,3 @@ pub use value::{
 
 mod source;
 mod value;
-
-/// # Errors
-/// Returns an error if the latest `Brightness` can't be read due to parsing errors
-pub async fn latest() -> Result<Observed<Brightness>, DaemonError> {
-    match source::latest().await {
-        Ok(latest) => Ok(latest),
-        Err(e) => {
-            error!("{e}");
-            Err(e)
-        }
-    }
-}

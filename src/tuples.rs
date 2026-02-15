@@ -1,14 +1,16 @@
 use tracing::{error, instrument};
 
 use crate::{
-    battery::{self},
-    bluetooth, brightness,
+    battery::Battery,
+    bluetooth::Bluetooth,
+    brightness::Brightness,
     error::DaemonError,
-    fan_profile,
+    fan_profile::FanProfile,
+    monitored::Monitored,
     observed::Observed::{Unavailable, Valid},
-    ram::{self},
+    ram::Ram,
     snapshot::current_snapshot,
-    volume,
+    volume::Volume,
 };
 
 pub const TUPLE_NAMES: &[&str] = &["volume", "brightness", "bluetooth", "battery", "ram", "fan_profile"];
@@ -60,19 +62,19 @@ async fn tuple_name_to_tuples_inner(tuple_name: &TupleName) -> Result<Vec<(Strin
     Ok(match tuple_name {
         TupleName::Volume => match current_snapshot().await.volume {
             Valid(volume) => volume.to_tuples(),
-            Unavailable => volume::latest().await?.to_tuples(),
+            Unavailable => Volume::latest().await?.to_tuples(),
         },
         TupleName::Brightness => match current_snapshot().await.brightness {
             Valid(brightness) => brightness.to_tuples(),
-            Unavailable => brightness::latest().await?.to_tuples(),
+            Unavailable => Brightness::latest().await?.to_tuples(),
         },
         TupleName::Bluetooth => match current_snapshot().await.bluetooth {
             Valid(bluetooth) => bluetooth.to_tuples(),
-            Unavailable => bluetooth::latest().await?.to_tuples(),
+            Unavailable => Bluetooth::latest().await?.to_tuples(),
         },
-        TupleName::Battery => battery::latest().await?.to_tuples(),
-        TupleName::Ram => ram::latest().await?.to_tuples(),
-        TupleName::FanProfile => fan_profile::latest().await?.to_tuples(), // Special case since the OS changes fan mode when plugging/unplugging AC
+        TupleName::Battery => Battery::latest().await?.to_tuples(),
+        TupleName::Ram => Ram::latest().await?.to_tuples(),
+        TupleName::FanProfile => FanProfile::latest().await?.to_tuples(), // Special case since the OS changes fan mode when plugging/unplugging AC
     })
 }
 

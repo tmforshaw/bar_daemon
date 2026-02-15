@@ -1,6 +1,6 @@
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{error, instrument};
 
 use crate::{
     ICON_END, ICON_EXT,
@@ -14,7 +14,7 @@ use crate::{
     tuples::ToTuples,
 };
 
-use super::{RamSource, default_source, latest};
+use super::{RamSource, default_source};
 
 #[derive(Subcommand)]
 pub enum RamGetCommands {
@@ -44,9 +44,9 @@ pub struct Ram {
     pub percent: u32,
 }
 
-impl_monitored!(Ram, ram);
+impl_monitored!(Ram, ram, ram);
 impl_into_snapshot_event!(Ram);
-impl_polled!(Ram, ram);
+impl_polled!(Ram);
 
 impl Ram {
     #[must_use]
@@ -123,7 +123,7 @@ pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<Daemo
             },
             RamItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest().await?.to_tuples(),
+                tuples: Ram::latest().await?.to_tuples(),
             },
         },
     )

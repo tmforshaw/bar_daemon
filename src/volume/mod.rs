@@ -1,8 +1,5 @@
-use crate::{error::DaemonError, observed::Observed};
 use source::{VolumeSource, default_source};
 use value::notify;
-
-use tracing::error;
 
 pub use value::{
     Volume, VolumeGetCommands, VolumeItem, VolumeSetCommands, evaluate_item, match_get_commands, match_set_commands,
@@ -10,15 +7,3 @@ pub use value::{
 
 mod source;
 mod value;
-
-/// # Errors
-/// Returns an error if the latest `Volume` can't be read due to parsing errors
-pub async fn latest() -> Result<Observed<Volume>, DaemonError> {
-    match source::latest().await {
-        Ok(latest) => Ok(latest),
-        Err(e) => {
-            error!("{e}");
-            Err(e)
-        }
-    }
-}

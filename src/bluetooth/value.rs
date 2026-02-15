@@ -1,6 +1,6 @@
 use clap::{ArgAction, Subcommand};
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{error, instrument};
 
 use crate::{
     ICON_END, ICON_EXT, NOTIFICATION_ID,
@@ -16,7 +16,7 @@ use crate::{
     tuples::ToTuples,
 };
 
-use super::{BluetoothSource, default_source, latest};
+use super::{BluetoothSource, default_source};
 
 const NOTIFICATION_OFFSET: u32 = 1;
 
@@ -49,7 +49,7 @@ pub struct Bluetooth {
     pub state: bool,
 }
 
-impl_monitored!(Bluetooth, bluetooth);
+impl_monitored!(Bluetooth, bluetooth, bluetooth);
 impl_into_snapshot_event!(Bluetooth);
 
 impl Bluetooth {
@@ -162,12 +162,12 @@ pub async fn evaluate_item(
                 item,
                 value: match current_snapshot().await.bluetooth {
                     Valid(bluetooth) => bluetooth.get_icon(),
-                    Unavailable => latest().await?.map(|bluetooth| bluetooth.get_icon()).to_string(),
+                    Unavailable => Bluetooth::latest().await?.map(|bluetooth| bluetooth.get_icon()).to_string(),
                 },
             },
             BluetoothItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest().await?.to_tuples(),
+                tuples: Bluetooth::latest().await?.to_tuples(),
             },
         }
     })

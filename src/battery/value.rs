@@ -3,9 +3,7 @@ use std::sync::LazyLock;
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use tracing::instrument;
-
-use super::{default_source, latest};
+use tracing::{error, instrument};
 
 use crate::{
     ICON_EXT, NOTIFICATION_ID,
@@ -21,6 +19,8 @@ use crate::{
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent},
     tuples::ToTuples,
 };
+
+use super::default_source;
 
 const NOTIFICATION_OFFSET: u32 = 0;
 
@@ -74,9 +74,9 @@ pub struct Battery {
     pub time: String,
 }
 
-impl_monitored!(Battery, battery);
+impl_monitored!(Battery, battery, battery);
 impl_into_snapshot_event!(Battery);
-impl_polled!(Battery, battery);
+impl_polled!(Battery);
 
 impl Battery {
     #[must_use]
@@ -255,11 +255,11 @@ pub async fn evaluate_item(item: DaemonItem, battery_item: &BatteryItem) -> Resu
             },
             BatteryItem::Icon => DaemonReply::Value {
                 item,
-                value: latest().await?.map(|battery| battery.get_icon()).to_string(),
+                value: Battery::latest().await?.map(|battery| battery.get_icon()).to_string(),
             },
             BatteryItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest().await?.to_tuples(),
+                tuples: Battery::latest().await?.to_tuples(),
             },
         },
     )

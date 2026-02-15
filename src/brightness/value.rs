@@ -1,6 +1,6 @@
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{error, instrument};
 
 use crate::{
     ICON_END, ICON_EXT, NOTIFICATION_ID, command,
@@ -14,7 +14,7 @@ use crate::{
     tuples::ToTuples,
 };
 
-use super::{BrightnessSource, MONITOR_ID, default_source, latest};
+use super::{BrightnessSource, MONITOR_ID, default_source};
 
 const NOTIFICATION_OFFSET: u32 = 2;
 
@@ -56,7 +56,7 @@ pub struct Brightness {
     pub keyboard: u32,
 }
 
-impl_monitored!(Brightness, brightness);
+impl_monitored!(Brightness, brightness, brightness);
 impl_into_snapshot_event!(Brightness);
 
 impl Brightness {
@@ -236,14 +236,17 @@ pub async fn evaluate_item(
                 item,
                 value: match current_snapshot().await.brightness {
                     Valid(brightness) => brightness.get_icon(MONITOR_ID),
-                    Unavailable => latest().await?.map(|brightness| brightness.get_icon(MONITOR_ID)).to_string(),
+                    Unavailable => Brightness::latest()
+                        .await?
+                        .map(|brightness| brightness.get_icon(MONITOR_ID))
+                        .to_string(),
                 },
             },
             BrightnessItem::All => DaemonReply::Tuples {
                 item,
                 tuples: match current_snapshot().await.brightness {
                     Valid(brightness) => brightness.to_tuples(),
-                    Unavailable => latest().await?.to_tuples(),
+                    Unavailable => Brightness::latest().await?.to_tuples(),
                 },
             },
         }

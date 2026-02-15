@@ -70,12 +70,12 @@ impl<T> Observed<T> {
     }
 
     #[must_use]
-    pub fn is_valid(self) -> bool {
+    pub const fn is_valid(&self) -> bool {
         matches!(self, Self::Valid(_))
     }
 
     #[must_use]
-    pub fn is_unavailable(self) -> bool {
+    pub const fn is_unavailable(&self) -> bool {
         matches!(self, Self::Unavailable)
     }
 

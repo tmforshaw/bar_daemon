@@ -26,10 +26,10 @@ pub trait Polled: Monitored {
 /// Generate the `Impl` for `Polled` using the given `type_name` and `module_name`
 #[macro_export]
 macro_rules! impl_polled {
-    ($type_name:ident, $module_name:ident) => {
+    ($type_name:ident) => {
         impl Polled for $type_name {
             async fn poll() -> Result<Observed<Self>, DaemonError> {
-                $crate::$module_name::latest().await
+                Self::latest().await
             }
         }
     };

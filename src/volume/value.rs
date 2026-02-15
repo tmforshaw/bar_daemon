@@ -1,3 +1,7 @@
+use clap::{ArgAction, Subcommand};
+use serde::{Deserialize, Serialize};
+use tracing::{error, instrument};
+
 use crate::{
     ICON_EXT, NOTIFICATION_ID,
     cli::parse_bool,
@@ -12,11 +16,7 @@ use crate::{
     tuples::ToTuples,
 };
 
-use super::{VolumeSource, default_source, latest};
-
-use clap::{ArgAction, Subcommand};
-use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use super::{VolumeSource, default_source};
 
 const NOTIFICATION_OFFSET: u32 = 4;
 
@@ -58,7 +58,7 @@ pub struct Volume {
     pub mute: bool,
 }
 
-impl_monitored!(Volume, volume);
+impl_monitored!(Volume, volume, volume);
 impl_into_snapshot_event!(Volume);
 
 impl Volume {
@@ -206,12 +206,12 @@ pub async fn evaluate_item(
                 item,
                 value: match current_snapshot().await.volume {
                     Valid(volume) => volume.get_icon(),
-                    Unavailable => latest().await?.map(|volume| volume.get_icon()).to_string(),
+                    Unavailable => Volume::latest().await?.map(|volume| volume.get_icon()).to_string(),
                 },
             },
             VolumeItem::All => DaemonReply::Tuples {
                 item,
-                tuples: latest().await?.to_tuples(),
+                tuples: Volume::latest().await?.to_tuples(),
             },
         }
     })

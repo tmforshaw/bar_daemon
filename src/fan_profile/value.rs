@@ -1,13 +1,12 @@
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{error, instrument};
 
 use crate::{
     ICON_END, ICON_EXT, NOTIFICATION_ID, command,
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    fan_profile::latest,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
     observed::Observed::{self, Unavailable, Valid},
@@ -66,9 +65,9 @@ pub struct FanProfile {
     pub profile: FanState,
 }
 
-impl_monitored!(FanProfile, fan_profile);
+impl_monitored!(FanProfile, fan_profile, fan_profile);
 impl_into_snapshot_event!(FanProfile);
-impl_polled!(FanProfile, fan_profile);
+impl_polled!(FanProfile);
 
 impl FanProfile {
     #[must_use]
@@ -174,7 +173,7 @@ pub async fn evaluate_item(
         // Get value (Try getting latest once if its unavailable)
         let profile = match current_snapshot().await.fan_profile {
             Valid(fan_profile) => Valid(fan_profile),
-            Unavailable => latest().await?,
+            Unavailable => FanProfile::latest().await?,
         }
         .map(|fan_profile| FAN_STATE_STRINGS[fan_profile.profile as usize])
         .to_string();
