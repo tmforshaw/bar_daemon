@@ -13,6 +13,7 @@
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 
 // TODO Implement some kind of "last-known value" system for the 'set' functions
+// TODO Decide where to add read_until_available() so that Unavailable values can be rechecked
 
 pub mod battery;
 pub mod bluetooth;
