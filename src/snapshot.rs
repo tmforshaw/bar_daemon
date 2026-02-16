@@ -4,7 +4,7 @@ use std::{
 };
 
 use tokio::sync::{RwLock, broadcast};
-use tracing::instrument;
+use tracing::{info, instrument};
 
 use crate::{
     battery::Battery,
@@ -12,7 +12,10 @@ use crate::{
     brightness::Brightness,
     fan_profile::FanProfile,
     monitored::{Monitored, MonitoredUpdate, update_monitored},
-    observed::Observed::{self, Unavailable},
+    observed::{
+        Observed::{self, Unavailable},
+        spawn_read_until_available,
+    },
     ram::Ram,
     volume::Volume,
 };
@@ -53,8 +56,21 @@ pub async fn current_snapshot() -> Snapshot {
 #[must_use]
 #[instrument]
 pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: Observed<M>) -> MonitoredUpdate<M> {
-    let mut snapshot = CURRENT_SNAPSHOT.write().await;
-    update_monitored(&mut snapshot, new_value)
+    let update = {
+        let mut snapshot = CURRENT_SNAPSHOT.write().await;
+        update_monitored(&mut snapshot, new_value)
+    };
+
+    // Spawn task to run read_until_available if the new value is Unavailable
+    if update.new.is_unavailable() {
+        info!(
+            "Spawning task to read {} until it is Valid: {update:?}",
+            std::any::type_name::<M>()
+        );
+        spawn_read_until_available::<M>();
+    }
+
+    update
 }
 
 static SNAPSHOT_EVENTS: LazyLock<broadcast::Sender<SnapshotEvent>> = LazyLock::new(|| {
