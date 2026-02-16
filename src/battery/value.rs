@@ -14,7 +14,7 @@ use crate::{
     monitored::{Monitored, MonitoredUpdate},
     observed::Observed::{self, Unavailable, Valid},
     polled::Polled,
-    snapshot::{IntoSnapshotEvent, Snapshot},
+    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent},
     tuples::ToTuples,
 };
 

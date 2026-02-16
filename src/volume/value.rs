@@ -192,14 +192,14 @@ pub async fn evaluate_item(
                 item,
                 value: match current_snapshot().await.volume {
                     Valid(volume) => volume.percent.to_string(),
-                    Unavailable => default_source().read_percent().await?.to_string(),
+                    Unavailable => Volume::latest().await?.map(|volume| volume.percent).to_string(),
                 },
             },
             VolumeItem::Mute => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.volume {
                     Valid(volume) => volume.mute.to_string(),
-                    Unavailable => default_source().read_mute().await?.to_string(),
+                    Unavailable => Volume::latest().await?.map(|volume| volume.mute).to_string(),
                 },
             },
             VolumeItem::Icon => DaemonReply::Value {

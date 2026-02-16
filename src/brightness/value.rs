@@ -222,14 +222,14 @@ pub async fn evaluate_item(
                 item,
                 value: match current_snapshot().await.brightness {
                     Valid(brightness) => brightness.monitor.to_string(),
-                    Unavailable => default_source().read_monitor().await?.to_string(),
+                    Unavailable => Brightness::latest().await?.map(|brightness| brightness.monitor).to_string(),
                 },
             },
             BrightnessItem::Keyboard => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.brightness {
                     Valid(brightness) => brightness.keyboard.to_string(),
-                    Unavailable => default_source().read_keyboard().await?.to_string(),
+                    Unavailable => Brightness::latest().await?.map(|brightness| brightness.keyboard).to_string(),
                 },
             },
             BrightnessItem::Icon => DaemonReply::Value {

@@ -155,7 +155,7 @@ pub async fn evaluate_item(
                 item,
                 value: match current_snapshot().await.bluetooth {
                     Valid(bluetooth) => bluetooth.state.to_string(),
-                    Unavailable => default_source().read_state().await?.to_string(),
+                    Unavailable => Bluetooth::latest().await?.map(|bluetooth| bluetooth.state).to_string(),
                 },
             },
             BluetoothItem::Icon => DaemonReply::Value {

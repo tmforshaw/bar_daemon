@@ -6,7 +6,8 @@ use tracing::instrument;
 use crate::{
     brightness, command,
     error::DaemonError,
-    observed::Observed::{self, Unavailable, Valid},
+    monitored::Monitored,
+    observed::Observed::{self},
     snapshot::{current_snapshot, update_snapshot},
 };
 
@@ -70,14 +71,8 @@ impl BrightnessSource for BctlBrightness {
     async fn set_monitor(&self, percent_str: &str) -> Result<(), DaemonError> {
         set_bctl_device(MONITOR_ID, percent_str).await?;
 
-        // Get snapshot brightness and set new monitor, or get entire latest()
-        let brightness = match current_snapshot().await.brightness {
-            Valid(brightness) => default_source().read_monitor().await?.map(|new_monitor| Brightness {
-                monitor: new_monitor,
-                ..brightness
-            }),
-            Unavailable => latest().await?,
-        };
+        // Get brightness from latest()
+        let brightness = Brightness::latest().await?;
 
         // Update snapshot
         let update = update_snapshot(brightness).await;
@@ -95,14 +90,8 @@ impl BrightnessSource for BctlBrightness {
     async fn set_keyboard(&self, percent_str: &str) -> Result<(), DaemonError> {
         set_bctl_device(KEYBOARD_ID, percent_str).await?;
 
-        // Get snapshot brightness and set new keyboard, or get entire latest()
-        let brightness = match current_snapshot().await.brightness {
-            Valid(brightness) => default_source().read_keyboard().await?.map(|new_keyboard| Brightness {
-                keyboard: new_keyboard,
-                ..brightness
-            }),
-            Unavailable => latest().await?,
-        };
+        // Get brightness from latest()
+        let brightness = Brightness::latest().await?;
 
         // Update snapshot
         let update = update_snapshot(brightness).await;

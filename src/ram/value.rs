@@ -14,8 +14,6 @@ use crate::{
     tuples::ToTuples,
 };
 
-use super::{RamSource, default_source};
-
 #[derive(Subcommand)]
 pub enum RamGetCommands {
     #[command(alias = "tot", alias = "t")]
@@ -100,21 +98,21 @@ pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<Daemo
                 item,
                 value: match current_snapshot().await.ram {
                     Valid(ram) => ram.total.to_string(),
-                    Unavailable => default_source().read_total().await?.to_string(),
+                    Unavailable => Ram::latest().await?.map(|ram| ram.total).to_string(),
                 },
             },
             RamItem::Used => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
                     Valid(ram) => ram.used.to_string(),
-                    Unavailable => default_source().read_used().await?.to_string(),
+                    Unavailable => Ram::latest().await?.map(|ram| ram.used).to_string(),
                 },
             },
             RamItem::Percent => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
                     Valid(ram) => ram.percent.to_string(),
-                    Unavailable => default_source().read_percent().await?.to_string(),
+                    Unavailable => Ram::latest().await?.map(|ram| ram.percent).to_string(),
                 },
             },
             RamItem::Icon => DaemonReply::Value {
