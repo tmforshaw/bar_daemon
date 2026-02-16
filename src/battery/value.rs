@@ -121,7 +121,7 @@ impl ToTuples for Battery {
             let icon = self.get_icon();
 
             vec![
-                BAT_STATE_STRINGS[*state as usize].to_string(),
+                state.to_string(),
                 percent.to_string(),
                 time.clone(),
                 format!("{icon}{ICON_EXT}"),
