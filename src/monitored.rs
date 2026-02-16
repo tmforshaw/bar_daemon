@@ -67,7 +67,7 @@ macro_rules! impl_monitored {
             /// # Errors
             /// Returns an error if the latest value of `Monitored` can't be read due to parsing errors
             async fn latest() -> Result<Observed<Self>, DaemonError> {
-                match $crate::$module_name::source::latest().await {
+                match $crate::$module_name::source::default_source().read().await {
                     Ok(latest) => Ok(latest),
                     Err(e) => {
                         error!("{e}");

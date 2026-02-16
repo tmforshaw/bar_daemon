@@ -32,10 +32,6 @@ pub fn default_source() -> impl BrightnessSource {
     BctlBrightness
 }
 
-pub async fn latest() -> Result<Observed<Brightness>, DaemonError> {
-    default_source().read().await
-}
-
 // ---------------- Bctl Source ----------------
 
 #[derive(Debug)]
@@ -150,7 +146,7 @@ async fn set_bctl_device(device_id: &str, percent_str: &str) -> Result<(), Daemo
         let current_brightness = current_snapshot()
             .await
             .brightness
-            .unwrap_or(latest().await?.unwrap_or_default());
+            .unwrap_or(Brightness::latest().await?.unwrap_or_default());
 
         let delta_percent = percent_str.parse::<f64>()?;
 

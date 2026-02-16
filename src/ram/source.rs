@@ -23,10 +23,6 @@ pub fn default_source() -> impl RamSource {
     ProcpsRam
 }
 
-pub async fn latest() -> Result<Observed<Ram>, DaemonError> {
-    default_source().read().await
-}
-
 // ---------------- Procps Source --------------
 
 #[derive(Debug)]

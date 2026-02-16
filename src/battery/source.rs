@@ -22,10 +22,6 @@ pub fn default_source() -> impl BatterySource {
     AcpiBattery
 }
 
-pub async fn latest() -> Result<Observed<Battery>, DaemonError> {
-    default_source().read().await
-}
-
 // ---------------- ACPI Source ----------------
 
 #[derive(Debug)]

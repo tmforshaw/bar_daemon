@@ -3,6 +3,7 @@ use tracing::instrument;
 use crate::{
     bluetooth, command,
     error::DaemonError,
+    monitored::Monitored,
     observed::Observed::{self, Valid},
     snapshot::{current_snapshot, update_snapshot},
 };
@@ -22,10 +23,6 @@ pub trait BluetoothSource {
 #[must_use]
 pub fn default_source() -> impl BluetoothSource {
     BluezBluetooth
-}
-
-pub async fn latest() -> Result<Observed<Bluetooth>, DaemonError> {
-    default_source().read().await
 }
 
 // ---------------- Bluez Source ---------------
@@ -69,7 +66,7 @@ impl BluetoothSource for BluezBluetooth {
                 new_state = !current_snapshot()
                     .await
                     .bluetooth
-                    .unwrap_or(latest().await?.unwrap_or_default())
+                    .unwrap_or(Bluetooth::latest().await?.unwrap_or_default())
                     .state;
 
                 "toggle"

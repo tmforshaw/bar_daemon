@@ -8,6 +8,7 @@ use crate::{
     command,
     error::DaemonError,
     log_linear::{linear_to_logarithmic, logarithmic_to_linear},
+    monitored::Monitored,
     observed::Observed::{self, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
     volume,
@@ -27,10 +28,6 @@ pub trait VolumeSource {
 #[must_use]
 pub fn default_source() -> impl VolumeSource {
     WpctlVolume
-}
-
-pub async fn latest() -> Result<Observed<Volume>, DaemonError> {
-    default_source().read().await
 }
 
 // ---------------- Wpctl Source ---------------
@@ -73,7 +70,7 @@ impl VolumeSource for WpctlVolume {
         // Get the current snapshot values
         let volume_observed = match current_snapshot().await.volume {
             Valid(volume) => Valid(volume),
-            Unavailable => latest().await?,
+            Unavailable => Volume::latest().await?,
         };
         let volume = volume_observed.clone().unwrap_or_default();
 
@@ -126,7 +123,7 @@ impl VolumeSource for WpctlVolume {
     async fn set_mute(&self, mute_str: &str) -> Result<(), DaemonError> {
         let volume_observed = match current_snapshot().await.volume {
             Valid(volume) => Valid(volume),
-            Unavailable => latest().await?,
+            Unavailable => Volume::latest().await?,
         };
         let volume = volume_observed.clone().unwrap_or_default();
 

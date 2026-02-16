@@ -18,6 +18,8 @@ use crate::{
     tuples::ToTuples,
 };
 
+use super::source::BatterySource;
+
 const NOTIFICATION_OFFSET: u32 = 0;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]

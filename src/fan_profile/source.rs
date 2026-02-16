@@ -4,6 +4,7 @@ use crate::{
     command,
     error::DaemonError,
     fan_profile,
+    monitored::Monitored,
     observed::Observed::{self, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
 };
@@ -27,10 +28,6 @@ pub trait FanProfileSource {
 #[must_use]
 pub fn default_source() -> impl FanProfileSource {
     AsusctlFanProfile
-}
-
-pub async fn latest() -> Result<Observed<FanProfile>, DaemonError> {
-    default_source().read().await
 }
 
 // ---------------- Wpctl Source ---------------
@@ -72,7 +69,7 @@ impl FanProfileSource for AsusctlFanProfile {
     async fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError> {
         let fan_profile = match current_snapshot().await.fan_profile {
             Valid(fan_profile) => Valid(fan_profile),
-            Unavailable => latest().await?,
+            Unavailable => FanProfile::latest().await?,
         };
 
         let new_profile_idx;

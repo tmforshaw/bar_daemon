@@ -14,6 +14,8 @@ use crate::{
     tuples::ToTuples,
 };
 
+use super::source::RamSource;
+
 #[derive(Subcommand)]
 pub enum RamGetCommands {
     #[command(alias = "tot", alias = "t")]
