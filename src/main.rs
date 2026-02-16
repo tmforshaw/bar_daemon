@@ -12,8 +12,7 @@
 
 use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 
-// TODO Implement some kind of "last-known value" system for the 'set' functions
-// TODO Change Observed<_> unwrap_or_default uses to map_or_else with Unavailable if the values couldn't be found
+// TODO Implement some kind of "last-known value" system for the 'set' functions (currently uses unwrap_or_default)
 
 pub mod battery;
 pub mod bluetooth;
