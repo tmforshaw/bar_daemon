@@ -18,8 +18,6 @@ pub const KEYBOARD_ID: &str = "asus::kbd_backlight";
 pub trait BrightnessSource {
     // Read from commands (Get latest values)
     fn read(&self) -> impl std::future::Future<Output = Result<Observed<Brightness>, DaemonError>> + Send;
-    fn read_monitor(&self) -> impl std::future::Future<Output = Result<Observed<u32>, DaemonError>> + Send;
-    fn read_keyboard(&self) -> impl std::future::Future<Output = Result<Observed<u32>, DaemonError>> + Send;
 
     // Change values of source
     fn set_monitor(&self, percent_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + Send;
@@ -63,57 +61,6 @@ impl BrightnessSource for BctlBrightness {
         let _update = update_snapshot(brightness.clone()).await;
 
         Ok(brightness)
-    }
-
-    /// # Errors
-    /// Returns an error if the command cannot be spawned
-    /// Returns an error if values in the output of the command cannot be parsed
-    #[instrument]
-    async fn read_monitor(&self) -> Result<Observed<u32>, DaemonError> {
-        fn read_monitor_inner() -> Result<u32, DaemonError> {
-            // Get the brightness via brightnessctl
-            read_bctl_device(MONITOR_ID)
-        }
-
-        // If there was an error, keep as unavailable, if not then map to entire monitored value
-        let brightness = match read_monitor_inner().into() {
-            Valid(monitor) => match current_snapshot().await.brightness {
-                Valid(brightness) => Valid(brightness),
-                Unavailable => latest().await?,
-            }
-            .map(|brightness| Brightness { monitor, ..brightness }),
-            Unavailable => Unavailable,
-        };
-
-        // Update the snapshot
-        let _update = update_snapshot(brightness.clone()).await;
-
-        Ok(brightness.map(|brightness| brightness.monitor))
-    }
-
-    /// # Errors
-    /// Returns an error if the command cannot be spawned
-    /// Returns an error if values in the output of the command cannot be parsed
-    #[instrument]
-    async fn read_keyboard(&self) -> Result<Observed<u32>, DaemonError> {
-        fn read_keyboard_inner() -> Result<u32, DaemonError> {
-            // Get the brightness via brightnessctl
-            read_bctl_device(KEYBOARD_ID)
-        }
-
-        let brightness = match read_keyboard_inner().into() {
-            Valid(keyboard) => match current_snapshot().await.brightness {
-                Valid(brightness) => Valid(brightness),
-                Unavailable => latest().await?,
-            }
-            .map(|brightness| Brightness { keyboard, ..brightness }),
-            Unavailable => Unavailable,
-        };
-
-        // Update the snapshot
-        let _update = update_snapshot(brightness.clone()).await;
-
-        Ok(brightness.map(|brightness| brightness.keyboard))
     }
 
     /// # Errors

@@ -16,8 +16,6 @@ use crate::{
 pub trait VolumeSource {
     // Read from commands (Get latest values)
     fn read(&self) -> impl std::future::Future<Output = Result<Observed<Volume>, DaemonError>> + std::marker::Send;
-    fn read_percent(&self) -> impl std::future::Future<Output = Result<Observed<u32>, DaemonError>> + std::marker::Send;
-    fn read_mute(&self) -> impl std::future::Future<Output = Result<Observed<bool>, DaemonError>> + std::marker::Send;
 
     // Change values of source
     fn set_percent(&self, percent_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + std::marker::Send;
@@ -63,64 +61,6 @@ impl VolumeSource for WpctlVolume {
         let _update = update_snapshot(volume.clone()).await;
 
         Ok(volume)
-    }
-
-    #[instrument]
-    async fn read_percent(&self) -> Result<Observed<u32>, DaemonError> {
-        fn read_percent_inner() -> Result<u32, DaemonError> {
-            let output = get_wpctl_output()?;
-            let output_split = get_wpctl_split(&output);
-
-            get_linear_percent_from_wpctl_split(output_split.clone())
-        }
-
-        // If there was an error, keep as unavailable, if not then map to entire monitored value
-        let volume = match read_percent_inner().into() {
-            Valid(percent) => {
-                let volume = match current_snapshot().await.volume {
-                    Valid(volume) => Valid(volume),
-                    Unavailable => latest().await?,
-                }
-                .unwrap_or_default();
-
-                Valid(Volume { percent, ..volume })
-            }
-            Unavailable => Unavailable,
-        };
-
-        // Update current snapshot
-        let _update = update_snapshot(volume.clone()).await;
-
-        Ok(volume.map(|volume| volume.percent))
-    }
-
-    #[instrument]
-    async fn read_mute(&self) -> Result<Observed<bool>, DaemonError> {
-        fn read_mute_inner() -> Result<bool, DaemonError> {
-            let output = get_wpctl_output()?;
-            let output_split = get_wpctl_split(&output);
-
-            Ok(get_mute_from_wpctl_split(output_split.clone()))
-        }
-
-        // If there was an error, keep as unavailable, if not then map to entire monitored value
-        let volume = match read_mute_inner().into() {
-            Valid(mute) => {
-                let volume = match current_snapshot().await.volume {
-                    Valid(volume) => Valid(volume),
-                    Unavailable => latest().await?,
-                }
-                .unwrap_or_default();
-
-                Valid(Volume { mute, ..volume })
-            }
-            Unavailable => Unavailable,
-        };
-
-        // Update current snapshot
-        let _update = update_snapshot(volume.clone()).await;
-
-        Ok(volume.map(|volume| volume.mute))
     }
 
     // Set source values

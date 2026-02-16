@@ -17,7 +17,6 @@ pub const FAN_STATE_STRINGS: &[&str] = &["Performance", "Balanced", "Quiet"];
 pub trait FanProfileSource {
     // Read from commands (Get latest values)
     fn read(&self) -> impl std::future::Future<Output = Result<Observed<FanProfile>, DaemonError>> + Send;
-    async fn read_profile(&self) -> Result<Observed<FanState>, DaemonError>;
 
     // Change values of source
     fn set_profile(&self, profile_str: &str) -> impl std::future::Future<Output = Result<(), DaemonError>> + Send;
@@ -64,19 +63,6 @@ impl FanProfileSource for AsusctlFanProfile {
         fan_profile::notify(update).await?;
 
         Ok(fan_profile)
-    }
-
-    /// # Errors
-    /// Returns an error if the command can't be ran
-    /// Returns an error if the correct line can't be found
-    /// Returns an error if the correct part of the line can't be found
-    /// Returns an error if the profile string can't be converted to ``FanState``
-    #[instrument]
-    async fn read_profile(&self) -> Result<Observed<FanState>, DaemonError> {
-        // If there was an error, keep as unavailable, if not then map to monitored value
-        self.read()
-            .await
-            .map(|fan_profile| fan_profile.map(|fan_profile| fan_profile.profile))
     }
 
     /// # Errors

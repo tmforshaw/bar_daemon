@@ -6,9 +6,7 @@ use tokio::sync::RwLock;
 use tracing::{error, instrument};
 
 use crate::{
-    ICON_EXT, NOTIFICATION_ID,
-    battery::BatterySource,
-    command,
+    ICON_EXT, NOTIFICATION_ID, command,
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
@@ -16,11 +14,9 @@ use crate::{
     monitored::{Monitored, MonitoredUpdate},
     observed::Observed::{self, Unavailable, Valid},
     polled::Polled,
-    snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent},
+    snapshot::{IntoSnapshotEvent, Snapshot},
     tuples::ToTuples,
 };
-
-use super::default_source;
 
 const NOTIFICATION_OFFSET: u32 = 0;
 
@@ -31,6 +27,12 @@ pub enum BatteryState {
     Discharging = 2,
     #[default]
     NotCharging = 3,
+}
+
+impl std::fmt::Display for BatteryState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", BAT_STATE_STRINGS[*self as usize])
+    }
 }
 
 #[derive(Subcommand)]
@@ -239,19 +241,15 @@ pub async fn evaluate_item(item: DaemonItem, battery_item: &BatteryItem) -> Resu
         match battery_item {
             BatteryItem::State => DaemonReply::Value {
                 item,
-                value: default_source()
-                    .read_state()
-                    .await?
-                    .map(|state| BAT_STATE_STRINGS[state as usize])
-                    .to_string(),
+                value: Battery::latest().await?.map(|battery| battery.state.to_string()).to_string(),
             },
             BatteryItem::Percent => DaemonReply::Value {
                 item,
-                value: default_source().read_percent().await?.to_string(),
+                value: Battery::latest().await?.map(|battery| battery.percent).to_string(),
             },
             BatteryItem::Time => DaemonReply::Value {
                 item,
-                value: default_source().read_time().await?.to_string(),
+                value: Battery::latest().await?.map(|battery| battery.time).to_string(),
             },
             BatteryItem::Icon => DaemonReply::Value {
                 item,

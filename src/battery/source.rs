@@ -6,16 +6,13 @@ use super::value::{Battery, BatteryState};
 use crate::{
     battery, command,
     error::DaemonError,
-    observed::Observed::{self, Unavailable, Valid},
-    snapshot::{current_snapshot, update_snapshot},
+    observed::Observed::{self},
+    snapshot::update_snapshot,
 };
 
 pub trait BatterySource {
     // Read from commands (Get latest values)
     fn read(&self) -> impl std::future::Future<Output = Result<Observed<Battery>, DaemonError>> + Send;
-    fn read_state(&self) -> impl std::future::Future<Output = Result<Observed<BatteryState>, DaemonError>> + Send;
-    fn read_percent(&self) -> impl std::future::Future<Output = Result<Observed<u32>, DaemonError>> + Send;
-    fn read_time(&self) -> impl std::future::Future<Output = Result<Observed<String>, DaemonError>> + Send;
 }
 
 // -------------- Default Source ---------------
@@ -60,108 +57,6 @@ impl BatterySource for AcpiBattery {
         battery::notify(update).await?;
 
         Ok(battery)
-    }
-
-    #[instrument]
-    async fn read_state(&self) -> Result<Observed<BatteryState>, DaemonError> {
-        fn read_state_inner() -> Result<BatteryState, DaemonError> {
-            // Get ACPI output and split it into sections
-            let output = get_acpi_output()?;
-            let output_split = get_acpi_split(&output);
-
-            get_state_from_acpi_split(output_split)
-        }
-
-        // If there was an error, keep as unavailable, if not then map to entire monitored value
-        let battery = match read_state_inner().into() {
-            Valid(state) => {
-                let battery = match current_snapshot().await.battery {
-                    Valid(battery) => Valid(battery),
-                    Unavailable => latest().await?,
-                }
-                .unwrap_or_default();
-
-                Valid(Battery { state, ..battery })
-            }
-            Unavailable => Unavailable,
-        };
-
-        // Update current snapshot
-        let update = update_snapshot(battery.clone()).await;
-
-        // Perform notification checks and create notification if needed
-        battery::notify(update).await?;
-
-        Ok(battery.map(|battery| battery.state))
-    }
-
-    #[instrument]
-    async fn read_percent(&self) -> Result<Observed<u32>, DaemonError> {
-        fn read_percent_inner() -> Result<u32, DaemonError> {
-            // Get ACPI output and split it into sections
-            let output = get_acpi_output()?;
-            let output_split = get_acpi_split(&output);
-
-            get_percent_from_acpi_split(output_split)
-        }
-
-        // If there was an error, keep as unavailable, if not then map to entire monitored value
-        let battery = match read_percent_inner().into() {
-            Valid(percent) => {
-                let battery = match current_snapshot().await.battery {
-                    Valid(battery) => Valid(battery),
-                    Unavailable => latest().await?,
-                }
-                .unwrap_or_default();
-
-                Valid(Battery { percent, ..battery })
-            }
-            Unavailable => Unavailable,
-        };
-
-        // Update current snapshot
-        let update = update_snapshot(battery.clone()).await;
-
-        // Perform notification checks and create notification if needed
-        battery::notify(update).await?;
-
-        Ok(battery.map(|battery| battery.percent))
-    }
-
-    #[instrument]
-    async fn read_time(&self) -> Result<Observed<String>, DaemonError> {
-        fn read_time_inner() -> Result<String, DaemonError> {
-            // Get ACPI output and split it into sections
-            let output = get_acpi_output()?;
-            let output_split = get_acpi_split(&output);
-
-            get_time_from_acpi_split(output_split)
-        }
-
-        // If there was an error, keep as unavailable, if not then map to entire monitored value
-        let battery = match read_time_inner().into() {
-            Valid(time) => {
-                let battery = match current_snapshot().await.battery {
-                    Valid(battery) => Valid(battery),
-                    Unavailable => latest().await?,
-                }
-                .unwrap_or_default();
-
-                Valid(Battery {
-                    time: time.clone(),
-                    ..battery
-                })
-            }
-            Unavailable => Unavailable,
-        };
-
-        // Update current snapshot
-        let update = update_snapshot(battery.clone()).await;
-
-        // Perform notification checks and create notification if needed
-        battery::notify(update).await?;
-
-        Ok(battery.map(|battery| battery.time))
     }
 }
 
