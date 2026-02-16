@@ -1,12 +1,9 @@
-use std::{any::type_name, time::Duration};
-
-use tokio::time::Interval;
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, instrument};
 
 use crate::{
     error::DaemonError,
     observed::Observed::{self},
-    snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event, current_snapshot, update_snapshot},
+    snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event},
 };
 
 #[derive(Clone, Debug)]
@@ -77,56 +74,4 @@ macro_rules! impl_monitored {
             }
         }
     };
-}
-
-const READ_ATTEMPTS: u32 = 10;
-const READ_ATTEMPT_INTERVAL: Duration = Duration::from_micros(500);
-
-/// # Documentation
-/// A function for asynchronously reading the value until it is available (Meant to be used in a `tokio::spawn`)
-/// # Errors
-/// Error if `M::latest().await` returns an Err
-async fn read_until_available<M: Monitored + IntoSnapshotEvent>(
-    timer: &mut Interval,
-) -> Result<(MonitoredUpdate<M>, u32), DaemonError> {
-    let snapshot = current_snapshot().await;
-    let mut current: Observed<M> = M::get(&snapshot);
-
-    let mut attempts_num = 0;
-    while current.is_unavailable() {
-        attempts_num += 1;
-
-        // Only run READ_ATTEMPTS number of times
-        if attempts_num == READ_ATTEMPTS {
-            break;
-        }
-
-        // Get the latest value of this type
-        current = M::latest().await?;
-
-        // Wait for the timer to tick before progressing the loop
-        timer.tick().await;
-    }
-
-    if current.is_valid() {
-        Ok((update_snapshot(current).await, attempts_num))
-    } else {
-        Err(DaemonError::MonitoredReadAttemptFail(
-            type_name::<M>().to_string(),
-            attempts_num,
-        ))
-    }
-}
-
-/// # Documentation
-/// Create a task which (asynchronously) keeps getting the latest value of this type, and updates the snapshot when it is Valid
-pub fn spawn_read_until_available<M: Monitored + IntoSnapshotEvent>() {
-    tokio::spawn(async {
-        let mut timer = tokio::time::interval(READ_ATTEMPT_INTERVAL);
-
-        match read_until_available::<M>(&mut timer).await {
-            Ok((update, attempts)) => info!("Read Until Available Returned: '{:?}' after {attempts} attempts", update.new),
-            Err(e) => warn!("{e}"),
-        }
-    });
 }
