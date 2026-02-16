@@ -20,7 +20,7 @@ pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + '
 }
 
 /// # Documentation
-/// Updates the `Monitored` value within the `Snapshot` and returns a `MonitoredUpdate`
+/// Updates the `Monitored` value within the `Snapshot` and returns a `MonitoredUpdate` with the change
 #[must_use]
 #[instrument(skip(snapshot, new))]
 pub fn update_monitored<M: Monitored + IntoSnapshotEvent>(snapshot: &mut Snapshot, new: Observed<M>) -> MonitoredUpdate<M> {
