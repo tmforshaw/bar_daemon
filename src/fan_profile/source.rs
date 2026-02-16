@@ -13,8 +13,6 @@ use super::{FanProfile, FanState};
 
 pub const FAN_STATE_STRINGS: &[&str] = &["Performance", "Balanced", "Quiet"];
 
-// TODO
-#[allow(dead_code)]
 pub trait FanProfileSource {
     // Read from commands (Get latest values)
     fn read(&self) -> impl std::future::Future<Output = Result<Observed<FanProfile>, DaemonError>> + Send;
