@@ -9,7 +9,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
-    observed::Observed::{self, Unavailable, Valid},
+    observed::Observed::{self, Recovering, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
     tuples::ToTuples,
 };
@@ -164,7 +164,7 @@ pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Res
         // If the new values are valid
         match update.new {
             Valid(new) => do_notification(&new, device_id)?,
-            Unavailable => do_notification_unavailable(device_id)?,
+            Unavailable | Recovering => do_notification_unavailable(device_id)?,
         }
     }
 
@@ -222,21 +222,21 @@ pub async fn evaluate_item(
                 item,
                 value: match current_snapshot().await.brightness {
                     Valid(brightness) => brightness.monitor.to_string(),
-                    Unavailable => Brightness::latest().await?.map(|brightness| brightness.monitor).to_string(),
+                    Unavailable | Recovering => Brightness::latest().await?.map(|brightness| brightness.monitor).to_string(),
                 },
             },
             BrightnessItem::Keyboard => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.brightness {
                     Valid(brightness) => brightness.keyboard.to_string(),
-                    Unavailable => Brightness::latest().await?.map(|brightness| brightness.keyboard).to_string(),
+                    Unavailable | Recovering => Brightness::latest().await?.map(|brightness| brightness.keyboard).to_string(),
                 },
             },
             BrightnessItem::Icon => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.brightness {
                     Valid(brightness) => brightness.get_icon(MONITOR_ID),
-                    Unavailable => Brightness::latest()
+                    Unavailable | Recovering => Brightness::latest()
                         .await?
                         .map(|brightness| brightness.get_icon(MONITOR_ID))
                         .to_string(),
@@ -246,7 +246,7 @@ pub async fn evaluate_item(
                 item,
                 tuples: match current_snapshot().await.brightness {
                     Valid(brightness) => brightness.to_tuples(),
-                    Unavailable => Brightness::latest().await?.to_tuples(),
+                    Unavailable | Recovering => Brightness::latest().await?.to_tuples(),
                 },
             },
         }

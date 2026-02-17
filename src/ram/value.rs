@@ -8,7 +8,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
-    observed::Observed::{self, Unavailable, Valid},
+    observed::Observed::{self, Recovering, Unavailable, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
     tuples::ToTuples,
@@ -100,21 +100,21 @@ pub async fn evaluate_item(item: DaemonItem, ram_item: &RamItem) -> Result<Daemo
                 item,
                 value: match current_snapshot().await.ram {
                     Valid(ram) => ram.total.to_string(),
-                    Unavailable => Ram::latest().await?.map(|ram| ram.total).to_string(),
+                    Unavailable | Recovering => Ram::latest().await?.map(|ram| ram.total).to_string(),
                 },
             },
             RamItem::Used => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
                     Valid(ram) => ram.used.to_string(),
-                    Unavailable => Ram::latest().await?.map(|ram| ram.used).to_string(),
+                    Unavailable | Recovering => Ram::latest().await?.map(|ram| ram.used).to_string(),
                 },
             },
             RamItem::Percent => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.ram {
                     Valid(ram) => ram.percent.to_string(),
-                    Unavailable => Ram::latest().await?.map(|ram| ram.percent).to_string(),
+                    Unavailable | Recovering => Ram::latest().await?.map(|ram| ram.percent).to_string(),
                 },
             },
             RamItem::Icon => DaemonReply::Value {

@@ -9,7 +9,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
-    observed::Observed::{self, Unavailable, Valid},
+    observed::Observed::{self, Recovering, Unavailable, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
     tuples::ToTuples,
@@ -147,7 +147,7 @@ pub async fn notify(update: MonitoredUpdate<FanProfile>) -> Result<(), DaemonErr
         // If the new values are valid
         match update.new {
             Valid(new) => do_notification(&new)?,
-            Unavailable => do_notification_unavailable()?,
+            Unavailable | Recovering => do_notification_unavailable()?,
         }
     }
 
@@ -173,7 +173,7 @@ pub async fn evaluate_item(
         // Get value (Try getting latest once if its unavailable)
         let profile = match current_snapshot().await.fan_profile {
             Valid(fan_profile) => Valid(fan_profile),
-            Unavailable => FanProfile::latest().await?,
+            Unavailable | Recovering => FanProfile::latest().await?,
         }
         .map(|fan_profile| FAN_STATE_STRINGS[fan_profile.profile as usize])
         .to_string();

@@ -9,7 +9,7 @@ use crate::{
     error::DaemonError,
     log_linear::{linear_to_logarithmic, logarithmic_to_linear},
     monitored::Monitored,
-    observed::Observed::{self, Unavailable, Valid},
+    observed::Observed::{self, Recovering, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
     volume,
 };
@@ -70,7 +70,7 @@ impl VolumeSource for WpctlVolume {
         // Get the current snapshot values
         let volume_observed = match current_snapshot().await.volume {
             Valid(volume) => Valid(volume),
-            Unavailable => Volume::latest().await?,
+            Unavailable | Recovering => Volume::latest().await?,
         };
         let volume = volume_observed.clone().unwrap_or_default();
 
@@ -123,7 +123,7 @@ impl VolumeSource for WpctlVolume {
     async fn set_mute(&self, mute_str: &str) -> Result<(), DaemonError> {
         let volume_observed = match current_snapshot().await.volume {
             Valid(volume) => Valid(volume),
-            Unavailable => Volume::latest().await?,
+            Unavailable | Recovering => Volume::latest().await?,
         };
         let volume = volume_observed.clone().unwrap_or_default();
 

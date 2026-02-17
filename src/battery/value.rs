@@ -12,7 +12,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
-    observed::Observed::{self, Unavailable, Valid},
+    observed::Observed::{self, Recovering, Unavailable, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent},
     tuples::ToTuples,
@@ -227,7 +227,7 @@ pub async fn notify(update: MonitoredUpdate<Battery>) -> Result<(), DaemonError>
                     }
                 }
             }
-            Observed::Unavailable => do_notification_unavailable()?,
+            Unavailable | Recovering => do_notification_unavailable()?,
         }
     }
 

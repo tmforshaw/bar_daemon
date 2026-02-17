@@ -5,7 +5,7 @@ use crate::{
     error::DaemonError,
     fan_profile,
     monitored::Monitored,
-    observed::Observed::{self, Unavailable, Valid},
+    observed::Observed::{self, Recovering, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
 };
 
@@ -67,7 +67,7 @@ impl FanProfileSource for AsusctlFanProfile {
     async fn set_profile(&self, profile_str: &str) -> Result<(), DaemonError> {
         let fan_profile = match current_snapshot().await.fan_profile {
             Valid(fan_profile) => Valid(fan_profile),
-            Unavailable => FanProfile::latest().await?,
+            Unavailable | Recovering => FanProfile::latest().await?,
         };
 
         let new_profile_idx;

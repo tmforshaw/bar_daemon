@@ -11,7 +11,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
-    observed::Observed::{self, Unavailable, Valid},
+    observed::Observed::{self, Recovering, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
     tuples::ToTuples,
 };
@@ -161,7 +161,7 @@ pub async fn notify(update: MonitoredUpdate<Volume>) -> Result<(), DaemonError> 
         // If the new values are valid
         match update.new {
             Valid(new) => do_notification(&new)?,
-            Unavailable => do_notification_unavailable()?,
+            Unavailable | Recovering => do_notification_unavailable()?,
         }
     }
 
@@ -192,21 +192,21 @@ pub async fn evaluate_item(
                 item,
                 value: match current_snapshot().await.volume {
                     Valid(volume) => volume.percent.to_string(),
-                    Unavailable => Volume::latest().await?.map(|volume| volume.percent).to_string(),
+                    Unavailable | Recovering => Volume::latest().await?.map(|volume| volume.percent).to_string(),
                 },
             },
             VolumeItem::Mute => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.volume {
                     Valid(volume) => volume.mute.to_string(),
-                    Unavailable => Volume::latest().await?.map(|volume| volume.mute).to_string(),
+                    Unavailable | Recovering => Volume::latest().await?.map(|volume| volume.mute).to_string(),
                 },
             },
             VolumeItem::Icon => DaemonReply::Value {
                 item,
                 value: match current_snapshot().await.volume {
                     Valid(volume) => volume.get_icon(),
-                    Unavailable => Volume::latest().await?.map(|volume| volume.get_icon()).to_string(),
+                    Unavailable | Recovering => Volume::latest().await?.map(|volume| volume.get_icon()).to_string(),
                 },
             },
             VolumeItem::All => DaemonReply::Tuples {

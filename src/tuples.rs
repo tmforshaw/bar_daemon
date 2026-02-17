@@ -7,7 +7,7 @@ use crate::{
     error::DaemonError,
     fan_profile::FanProfile,
     monitored::Monitored,
-    observed::Observed::{Unavailable, Valid},
+    observed::Observed::{Recovering, Unavailable, Valid},
     ram::Ram,
     snapshot::current_snapshot,
     volume::Volume,
@@ -62,15 +62,15 @@ async fn tuple_name_to_tuples_inner(tuple_name: &TupleName) -> Result<Vec<(Strin
     Ok(match tuple_name {
         TupleName::Volume => match current_snapshot().await.volume {
             Valid(volume) => volume.to_tuples(),
-            Unavailable => Volume::latest().await?.to_tuples(),
+            Unavailable | Recovering => Volume::latest().await?.to_tuples(),
         },
         TupleName::Brightness => match current_snapshot().await.brightness {
             Valid(brightness) => brightness.to_tuples(),
-            Unavailable => Brightness::latest().await?.to_tuples(),
+            Unavailable | Recovering => Brightness::latest().await?.to_tuples(),
         },
         TupleName::Bluetooth => match current_snapshot().await.bluetooth {
             Valid(bluetooth) => bluetooth.to_tuples(),
-            Unavailable => Bluetooth::latest().await?.to_tuples(),
+            Unavailable | Recovering => Bluetooth::latest().await?.to_tuples(),
         },
         TupleName::Battery => Battery::latest().await?.to_tuples(),
         TupleName::Ram => Ram::latest().await?.to_tuples(),

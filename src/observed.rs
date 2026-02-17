@@ -1,6 +1,6 @@
 use std::{any::type_name, time::Duration};
 
-use Observed::{Unavailable, Valid};
+use Observed::{Recovering, Unavailable, Valid};
 use tokio::time::Interval;
 use tracing::{info, warn};
 
@@ -67,13 +67,14 @@ pub fn spawn_read_until_valid<M: Monitored + IntoSnapshotEvent>() {
 pub enum Observed<T> {
     Valid(T),
     Unavailable,
+    Recovering,
 }
 
 impl<T: ToTuples> Observed<T> {
     pub fn to_tuples(self) -> Vec<(String, String)> {
         match self {
             Valid(v) => v.to_tuples(),
-            Unavailable => {
+            Unavailable | Recovering => {
                 // Generate a fake tuple with "?" instead of real data
                 let tuple_names = T::to_tuple_names();
                 tuple_names.into_iter().map(|name| (name, String::from("?"))).collect()
@@ -85,8 +86,8 @@ impl<T: ToTuples> Observed<T> {
 impl<T: std::fmt::Debug> std::fmt::Display for Observed<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Valid(v) => write!(f, "{v:?}"),
-            Self::Unavailable => write!(f, "?"),
+            Valid(v) => write!(f, "{v:?}"),
+            Unavailable | Recovering => write!(f, "?"),
         }
     }
 }
@@ -99,7 +100,7 @@ impl<T> Observed<T> {
     pub fn unwrap(self) -> T {
         match self {
             Valid(v) => v,
-            Unavailable => panic!("Called 'unwrap()' on 'Unavailable'"),
+            Unavailable | Recovering => panic!("Called 'unwrap()' on 'Unavailable'"),
         }
     }
 
@@ -109,7 +110,7 @@ impl<T> Observed<T> {
     pub fn expect(self, msg: &str) -> T {
         match self {
             Valid(v) => v,
-            Unavailable => panic!("{msg}"),
+            Unavailable | Recovering => panic!("{msg}"),
         }
     }
 
@@ -117,7 +118,7 @@ impl<T> Observed<T> {
     pub fn unwrap_or(self, default: T) -> T {
         match self {
             Valid(v) => v,
-            Unavailable => default,
+            Unavailable | Recovering => default,
         }
     }
 
@@ -125,33 +126,51 @@ impl<T> Observed<T> {
     pub fn unwrap_or_else<F: Fn() -> T>(self, f: F) -> T {
         match self {
             Valid(v) => v,
-            Unavailable => f(),
+            Unavailable | Recovering => f(),
         }
     }
 
     #[must_use]
     pub const fn is_valid(&self) -> bool {
-        matches!(self, Self::Valid(_))
+        matches!(self, Valid(_))
+    }
+
+    /// # Documentation
+    /// This treats `Unavailable` and `Recovering` as the same
+    #[must_use]
+    pub const fn is_unavailable(&self) -> bool {
+        matches!(self, Unavailable | Recovering)
     }
 
     #[must_use]
-    pub const fn is_unavailable(&self) -> bool {
-        matches!(self, Self::Unavailable)
+    pub const fn is_recovering(&self) -> bool {
+        matches!(self, Recovering)
     }
 
     #[must_use]
     pub fn is_valid_or<F: Fn() -> bool>(self, f: F) -> bool {
         match self {
             Valid(_) => true,
-            Unavailable => f(),
+            Unavailable | Recovering => f(),
         }
     }
 
+    /// # Documentation
+    /// This treats `Unavailable` and `Recovering` as the same
     #[must_use]
     pub fn is_unavailable_or<F: Fn(T) -> bool>(self, f: F) -> bool {
         match self {
             Valid(v) => f(v),
-            Unavailable => true,
+            Unavailable | Recovering => true,
+        }
+    }
+
+    #[must_use]
+    pub fn is_recovering_or<U: Fn() -> bool, V: Fn(T) -> bool>(self, valid_fn: V, unavailable_fn: U) -> bool {
+        match self {
+            Valid(v) => valid_fn(v),
+            Unavailable => unavailable_fn(),
+            Recovering => true,
         }
     }
 }
@@ -161,7 +180,7 @@ impl<T: Default> Observed<T> {
     pub fn unwrap_or_default(self) -> T {
         match self {
             Valid(v) => v,
-            Unavailable => T::default(),
+            Unavailable | Recovering => T::default(),
         }
     }
 }
@@ -172,10 +191,10 @@ impl<T> Observed<T> {
     #[must_use]
     pub fn from_result<E: std::fmt::Display>(res: Result<T, E>) -> Self {
         match res {
-            Ok(v) => Self::Valid(v),
+            Ok(v) => Valid(v),
             Err(e) => {
                 warn!("{e}");
-                Self::Unavailable
+                Unavailable
             }
         }
     }
@@ -194,30 +213,46 @@ impl<T> Observed<T> {
         match self {
             Valid(v) => Valid(f(v)),
             Unavailable => Unavailable,
+            Recovering => Recovering,
+        }
+    }
+
+    /// # Documentation
+    /// This treats `Unavailable` and `Recovering` as the same
+    #[must_use]
+    pub fn map_unavailable<F: Fn() -> T>(self, f: F) -> T {
+        match self {
+            Valid(v) => v,
+            Unavailable | Recovering => f(),
         }
     }
 
     #[must_use]
-    pub fn map_unavailable<F: Fn() -> T>(self, f: F) -> Self {
+    pub fn map_recovering<F: Fn() -> T>(self, f: F) -> Self {
         match self {
             Valid(v) => Valid(v),
-            Unavailable => Valid(f()),
+            Unavailable => Unavailable,
+            Recovering => Valid(f()),
         }
     }
 
+    /// # Documentation
+    /// This treats `Unavailable` and `Recovering` as the same
     #[must_use]
     pub fn map_or<F: Fn(T) -> U, U>(self, default: U, f: F) -> U {
         match self {
             Valid(v) => f(v),
-            Unavailable => default,
+            Unavailable | Recovering => default,
         }
     }
 
+    /// # Documentation
+    /// This treats `Unavailable` and `Recovering` as the same
     #[must_use]
     pub fn map_or_else<F: Fn(T) -> U, D: Fn() -> U, U>(self, default: D, f: F) -> U {
         match self {
             Valid(v) => f(v),
-            Unavailable => default(),
+            Unavailable | Recovering => default(),
         }
     }
 }
