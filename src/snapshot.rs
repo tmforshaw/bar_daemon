@@ -14,7 +14,7 @@ use crate::{
     monitored::{Monitored, MonitoredUpdate, update_monitored},
     observed::{
         Observed::{self, Unavailable},
-        spawn_read_until_available,
+        spawn_read_until_valid,
     },
     ram::Ram,
     volume::Volume,
@@ -61,13 +61,13 @@ pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: Observ
         update_monitored(&mut snapshot, new_value)
     };
 
-    // Spawn task to run read_until_available if the new value is Unavailable
+    // Spawn task to run read_until_valid if the new value is Unavailable
     if update.new.is_unavailable() {
         info!(
             "Spawning task to read {} until it is Valid: {update:?}",
             std::any::type_name::<M>()
         );
-        spawn_read_until_available::<M>();
+        spawn_read_until_valid::<M>();
     }
 
     update
