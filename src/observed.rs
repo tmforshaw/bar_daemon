@@ -14,13 +14,14 @@ use crate::{
 const READ_ATTEMPTS: u32 = 10;
 const READ_ATTEMPT_INTERVAL: Duration = Duration::from_micros(500);
 
-/// # Documentation
-/// A function for asynchronously reading the value until it is available (Meant to be used in a `tokio::spawn`)
 /// # Errors
 /// Error if `M::latest().await` returns an Err
 async fn read_until_valid<M: Monitored + IntoSnapshotEvent>(
     timer: &mut Interval,
 ) -> Result<(MonitoredUpdate<M>, u32), DaemonError> {
+    // Set the value as recovering in the snapshot
+    let _update = update_snapshot::<M>(Recovering).await;
+
     let snapshot = current_snapshot().await;
     let mut current: Observed<M> = M::get(&snapshot);
 
@@ -51,7 +52,7 @@ async fn read_until_valid<M: Monitored + IntoSnapshotEvent>(
 }
 
 /// # Documentation
-/// Create a task which (asynchronously) keeps getting the latest value of this type, and updates the snapshot when it is Valid
+/// Create a task which (asynchronously) keeps polling the latest value of this type, and updates the snapshot when it is Valid
 pub fn spawn_read_until_valid<M: Monitored + IntoSnapshotEvent>() {
     tokio::spawn(async {
         let mut timer = tokio::time::interval(READ_ATTEMPT_INTERVAL);

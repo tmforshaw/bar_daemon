@@ -61,8 +61,8 @@ pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: Observ
         update_monitored(&mut snapshot, new_value)
     };
 
-    // Spawn task to run read_until_valid if the new value is Unavailable
-    if update.new.is_unavailable() {
+    // Spawn task to run read_until_valid if the new value is Unavailable (If the value isn't recovering)
+    if update.new == Unavailable && !update.old.is_recovering() {
         info!(
             "Spawning task to read {} until it is Valid: {update:?}",
             std::any::type_name::<M>()
