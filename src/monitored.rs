@@ -2,11 +2,11 @@ use tracing::{debug, instrument};
 
 use crate::{
     error::DaemonError,
-    observed::Observed::{self},
+    observed::Observed::{self, Recovering, Unavailable},
     snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct MonitoredUpdate<M: Monitored> {
     pub old: Observed<M>,
     pub new: Observed<M>,
@@ -24,14 +24,16 @@ pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + '
 #[must_use]
 #[instrument(skip(snapshot, new))]
 pub fn update_monitored<M: Monitored + IntoSnapshotEvent>(snapshot: &mut Snapshot, new: Observed<M>) -> MonitoredUpdate<M> {
-    // Get the old value from the snapshot, then replace with the new value
+    // Get the old value from the snapshot
     let old = M::get(snapshot);
-    M::set(snapshot, new.clone());
 
-    let update = MonitoredUpdate { old, new };
+    let update = MonitoredUpdate { old, new: new.clone() };
 
-    // Check that the update changed the data
-    if update.old != update.new {
+    // Check that the update changed the data, but don't allow updating to Unavailable from Recovering
+    if update.old != update.new && !(update.old == Recovering && update.new == Unavailable) {
+        // Replace monitored value in the snapshot
+        M::set(snapshot, new);
+
         // Log the update
         debug!("Monitored Value Updated: {update:?}");
 

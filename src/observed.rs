@@ -20,9 +20,6 @@ const READ_ATTEMPT_INTERVAL: Duration = Duration::from_micros(500);
 async fn read_until_valid<M: Monitored + IntoSnapshotEvent>(
     timer: &mut Interval,
 ) -> Result<(MonitoredUpdate<M>, u32), DaemonError> {
-    // Set the value as recovering in the snapshot
-    let _update = update_snapshot::<M>(Recovering).await;
-
     let snapshot = current_snapshot().await;
     let mut current: Observed<M> = M::get(&snapshot);
 
@@ -58,6 +55,10 @@ async fn read_until_valid<M: Monitored + IntoSnapshotEvent>(
 #[instrument]
 pub fn spawn_read_until_valid<M: Monitored + IntoSnapshotEvent>() {
     tokio::spawn(async {
+        // Set the value as Recovering in the snapshot
+        let _update = update_snapshot::<M>(Recovering).await;
+        info!("Value of type {} set to 'Recovering'", std::any::type_name::<M>());
+
         let mut timer = tokio::time::interval(READ_ATTEMPT_INTERVAL);
 
         match read_until_valid::<M>(&mut timer).await {

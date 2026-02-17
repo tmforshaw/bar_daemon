@@ -67,6 +67,7 @@ pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: Observ
             "Spawning task to read {} until it is Valid: {update:?}",
             std::any::type_name::<M>()
         );
+
         spawn_read_until_valid::<M>();
     }
 
