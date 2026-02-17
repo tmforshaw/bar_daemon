@@ -14,7 +14,7 @@ use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 
 // TODO Implement some kind of "last-known value" system for the 'set' functions (currently uses unwrap_or_default)
 // TODO notify listeners when the read_until_valid function finds a new valid value
-// TODO Read functions update snapshot so it ends up in a mini loop of spawning the read_until_valid task
+// TODO Call read_until_valid again after a long wait if the maximum number of attempts have been reached.
 
 pub mod battery;
 pub mod bluetooth;
