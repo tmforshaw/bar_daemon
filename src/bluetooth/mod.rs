@@ -1,5 +1,4 @@
 use source::BluetoothSource;
-use value::notify;
 
 pub use source::default_source;
 pub use value::{

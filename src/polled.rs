@@ -1,12 +1,12 @@
 use std::{sync::Arc, time::Duration};
 
-use tokio::sync::Notify;
 use tracing::error;
 
 use crate::{
     config::get_config,
     error::DaemonError,
     monitored::Monitored,
+    notification::Notify,
     observed::Observed,
     snapshot::{IntoSnapshotEvent, update_snapshot},
 };
@@ -35,7 +35,7 @@ macro_rules! impl_polled {
     };
 }
 
-pub fn spawn_poller<P: Polled + IntoSnapshotEvent>(shutdown_notify: Arc<Notify>) {
+pub fn spawn_poller<P: Polled + IntoSnapshotEvent + Notify<P>>(shutdown_notify: Arc<tokio::sync::Notify>) {
     tokio::spawn(async move {
         let mut timer = tokio::time::interval(P::interval());
 

@@ -9,6 +9,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
+    notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
@@ -100,58 +101,57 @@ impl ToTuples for FanProfile {
     }
 }
 
-/// # Errors
-/// Returns an error if the requested value could not be parsed
-#[instrument]
-pub async fn notify(update: MonitoredUpdate<FanProfile>) -> Result<(), DaemonError> {
-    fn do_notification(new: &FanProfile) -> Result<(), DaemonError> {
-        command::run(
-            "dunstify",
-            &[
-                "-u",
-                "-normal",
-                "-t",
-                get_config().notification_timeout.to_string().as_str(),
-                "-i",
-                FanProfile::get_icon().as_str(),
-                "-r",
-                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
-                format!("Fan Profile: {}", FAN_STATE_STRINGS[new.profile as usize]).as_str(),
-            ],
-        )?;
+impl Notify<Self> for FanProfile {
+    /// # Errors
+    /// Returns an error if the requested value could not be parsed
+    #[instrument]
+    async fn notify(update: MonitoredUpdate<Self>) -> Result<(), DaemonError> {
+        fn do_notification(new: &FanProfile) -> Result<(), DaemonError> {
+            command::run(
+                "dunstify",
+                &[
+                    "-u",
+                    "-normal",
+                    "-t",
+                    get_config().notification_timeout.to_string().as_str(),
+                    "-i",
+                    FanProfile::get_icon().as_str(),
+                    "-r",
+                    (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
+                    format!("Fan Profile: {}", FAN_STATE_STRINGS[new.profile as usize]).as_str(),
+                ],
+            )?;
 
-        Ok(())
-    }
+            Ok(())
+        }
 
-    fn do_notification_unavailable() -> Result<(), DaemonError> {
-        command::run(
-            "dunstify",
-            &[
-                "-u",
-                "-normal",
-                "-t",
-                get_config().notification_timeout.to_string().as_str(),
-                "-i",
-                FanProfile::get_icon().as_str(),
-                "-r",
-                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
-                "Fan Profile Unavailable",
-            ],
-        )?;
+        fn do_notification_unavailable() -> Result<(), DaemonError> {
+            command::run(
+                "dunstify",
+                &[
+                    "-u",
+                    "-normal",
+                    "-t",
+                    get_config().notification_timeout.to_string().as_str(),
+                    "-i",
+                    FanProfile::get_icon().as_str(),
+                    "-r",
+                    (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
+                    "Fan Profile Unavailable",
+                ],
+            )?;
 
-        Ok(())
-    }
+            Ok(())
+        }
 
-    // Only create notification if the update changed something
-    if update.old != update.new {
         // If the new values are valid
         match update.new {
             Valid(new) => do_notification(&new)?,
             Unavailable | Recovering => do_notification_unavailable()?,
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 /// # Errors

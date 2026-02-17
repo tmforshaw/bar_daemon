@@ -9,6 +9,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
+    notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
     tuples::ToTuples,
@@ -112,63 +113,65 @@ impl ToTuples for Brightness {
     }
 }
 
-/// # Errors
-/// Returns an error if the requested value could not be parsed
-#[instrument]
-pub async fn notify(update: MonitoredUpdate<Brightness>, device_id: &str) -> Result<(), DaemonError> {
-    fn do_notification(new: &Brightness, device_id: &str) -> Result<(), DaemonError> {
-        command::run(
-            "dunstify",
-            &[
-                "-u",
-                "normal",
-                "-r",
-                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
-                "-i",
-                new.get_icon(device_id).trim(),
-                "-t",
-                get_config().notification_timeout.to_string().as_str(),
-                "-h",
-                // Select the percent of the device which is being notified
-                format!(
-                    "int:value:{}",
-                    if device_id == MONITOR_ID { new.monitor } else { new.keyboard }
-                )
-                .as_str(),
-                format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
-            ],
-        )?;
+impl Notify<Self> for Brightness {
+    /// # Errors
+    /// Returns an error if the requested value could not be parsed
+    #[instrument]
+    async fn notify(update: MonitoredUpdate<Self>) -> Result<(), DaemonError> {
+        fn do_notification(new: &Brightness, device_id: &str) -> Result<(), DaemonError> {
+            command::run(
+                "dunstify",
+                &[
+                    "-u",
+                    "normal",
+                    "-r",
+                    (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
+                    "-i",
+                    new.get_icon(device_id).trim(),
+                    "-t",
+                    get_config().notification_timeout.to_string().as_str(),
+                    "-h",
+                    // Select the percent of the device which is being notified
+                    format!(
+                        "int:value:{}",
+                        if device_id == MONITOR_ID { new.monitor } else { new.keyboard }
+                    )
+                    .as_str(),
+                    format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
+                ],
+            )?;
 
-        Ok(())
-    }
+            Ok(())
+        }
 
-    fn do_notification_unavailable(device_id: &str) -> Result<(), DaemonError> {
-        command::run(
-            "dunstify",
-            &[
-                "-u",
-                "normal",
-                "-r",
-                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
-                "-t",
-                get_config().notification_timeout.to_string().as_str(),
-                format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
-            ],
-        )?;
+        fn do_notification_unavailable(device_id: &str) -> Result<(), DaemonError> {
+            command::run(
+                "dunstify",
+                &[
+                    "-u",
+                    "normal",
+                    "-r",
+                    (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
+                    "-t",
+                    get_config().notification_timeout.to_string().as_str(),
+                    format!("{}: ", if device_id == MONITOR_ID { "Monitor" } else { "Keyboard" }).as_str(),
+                ],
+            )?;
 
-        Ok(())
-    }
+            Ok(())
+        }
 
-    // If the update changed something
-    if update.old != update.new {
+        // TODO Figure out which value changed and notify for that device_id
+        let device_id = MONITOR_ID;
+
         // If the new values are valid
         match update.new {
             Valid(new) => do_notification(&new, device_id)?,
             Unavailable | Recovering => do_notification_unavailable(device_id)?,
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 #[must_use]

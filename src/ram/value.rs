@@ -8,6 +8,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
+    notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent, current_snapshot},
@@ -88,6 +89,9 @@ impl ToTuples for Ram {
         Self::to_tuple_names().into_iter().zip(str_values).collect::<Vec<_>>()
     }
 }
+
+// Implement default trait Impl for Notify
+impl Notify<Self> for Ram {}
 
 /// # Errors
 /// Returns an error if the requested value could not be evaluated

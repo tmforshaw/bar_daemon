@@ -11,7 +11,6 @@ use crate::{
     monitored::Monitored,
     observed::Observed::{self, Recovering, Unavailable, Valid},
     snapshot::{current_snapshot, update_snapshot},
-    volume,
 };
 
 pub trait VolumeSource {
@@ -98,14 +97,11 @@ impl VolumeSource for WpctlVolume {
         };
 
         // Update the volume in the snapshot
-        let update = update_snapshot(volume_observed.map(|volume| Volume {
+        let _update = update_snapshot(volume_observed.map(|volume| Volume {
             percent: linear_percent,
             ..volume
         }))
         .await;
-
-        // Do a notification
-        volume::notify(update).await?;
 
         // Set the volume internally as a logarithmic value
         let logarithmic_percent = linear_to_logarithmic(f64::from(linear_percent));
@@ -144,14 +140,11 @@ impl VolumeSource for WpctlVolume {
         let _ = command::run("wpctl", &["set-mute", "@DEFAULT_SINK@", mute.as_str()])?;
 
         // Update the volume in the snapshot
-        let update = update_snapshot(volume_observed.map(|volume| Volume {
+        let _update = update_snapshot(volume_observed.map(|volume| Volume {
             mute: new_mute,
             ..volume
         }))
         .await;
-
-        // Do a notification
-        volume::notify(update).await?;
 
         Ok(())
     }

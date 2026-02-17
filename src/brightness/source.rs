@@ -4,7 +4,7 @@ use itertools::Itertools;
 use tracing::instrument;
 
 use crate::{
-    brightness, command,
+    command,
     error::DaemonError,
     monitored::Monitored,
     observed::Observed::{self},
@@ -71,10 +71,7 @@ impl BrightnessSource for BctlBrightness {
         let brightness = Brightness::latest().await?;
 
         // Update snapshot
-        let update = update_snapshot(brightness).await;
-
-        // Do a notification
-        brightness::notify(update, MONITOR_ID).await?;
+        let _update = update_snapshot(brightness).await;
 
         Ok(())
     }
@@ -90,10 +87,7 @@ impl BrightnessSource for BctlBrightness {
         let brightness = Brightness::latest().await?;
 
         // Update snapshot
-        let update = update_snapshot(brightness).await;
-
-        // Do a notification
-        brightness::notify(update, KEYBOARD_ID).await?;
+        let _update = update_snapshot(brightness).await;
 
         Ok(())
     }

@@ -7,6 +7,7 @@ use tracing::{info, instrument, warn};
 use crate::{
     error::DaemonError,
     monitored::{Monitored, MonitoredUpdate},
+    notification::Notify,
     snapshot::{IntoSnapshotEvent, current_snapshot, update_snapshot},
     tuples::ToTuples,
 };
@@ -17,7 +18,7 @@ const READ_ATTEMPT_INTERVAL: Duration = Duration::from_micros(500);
 /// # Errors
 /// Error if `M::latest().await` returns an Err
 #[instrument(skip(timer))]
-async fn read_until_valid<M: Monitored + IntoSnapshotEvent>(
+async fn read_until_valid<M: Monitored + IntoSnapshotEvent + Notify<M>>(
     timer: &mut Interval,
 ) -> Result<(MonitoredUpdate<M>, u32), DaemonError> {
     let snapshot = current_snapshot().await;
@@ -53,11 +54,11 @@ async fn read_until_valid<M: Monitored + IntoSnapshotEvent>(
 /// # Documentation
 /// Create a task which (asynchronously) keeps polling the latest value of this type, and updates the snapshot when it is Valid
 #[instrument]
-pub fn spawn_read_until_valid<M: Monitored + IntoSnapshotEvent>() {
+pub fn spawn_read_until_valid<M: Monitored + IntoSnapshotEvent + Notify<M>>() {
     tokio::spawn(async {
         // Set the value as Recovering in the snapshot
         let _update = update_snapshot::<M>(Recovering).await;
-        info!("Value of type {} set to 'Recovering'", std::any::type_name::<M>());
+        info!("Value of type {} set to 'Recovering'", type_name::<M>());
 
         let mut timer = tokio::time::interval(READ_ATTEMPT_INTERVAL);
 

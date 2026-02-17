@@ -1,10 +1,11 @@
 use std::{
+    any::type_name,
     sync::{Arc, LazyLock},
     time::Instant,
 };
 
 use tokio::sync::{RwLock, broadcast};
-use tracing::{info, instrument};
+use tracing::{info, instrument, warn};
 
 use crate::{
     battery::Battery,
@@ -12,6 +13,7 @@ use crate::{
     brightness::Brightness,
     fan_profile::FanProfile,
     monitored::{Monitored, MonitoredUpdate, update_monitored},
+    notification::Notify,
     observed::{
         Observed::{self, Unavailable},
         spawn_read_until_valid,
@@ -55,7 +57,7 @@ pub async fn current_snapshot() -> Snapshot {
 
 #[must_use]
 #[instrument]
-pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: Observed<M>) -> MonitoredUpdate<M> {
+pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent + Notify<M>>(new_value: Observed<M>) -> MonitoredUpdate<M> {
     let update = {
         let mut snapshot = CURRENT_SNAPSHOT.write().await;
         update_monitored(&mut snapshot, new_value)
@@ -63,12 +65,18 @@ pub async fn update_snapshot<M: Monitored + IntoSnapshotEvent>(new_value: Observ
 
     // Spawn task to run read_until_valid if the new value is Unavailable (If the value isn't recovering)
     if update.new == Unavailable && !update.old.is_recovering() {
-        info!(
-            "Spawning task to read {} until it is Valid: {update:?}",
-            std::any::type_name::<M>()
-        );
+        info!("Spawning task to read {} until it is Valid: {update:?}", type_name::<M>());
 
         spawn_read_until_valid::<M>();
+    }
+
+    // If the update changed something, and the old value isn't Recovering
+    if update.new != update.old && !update.old.is_recovering() {
+        // Send notification (if notify is implemented)
+        match M::notify(update.clone()).await {
+            Ok(()) => {}
+            Err(e) => warn!("Could not create notification for type '{}': {e}", type_name::<M>()),
+        }
     }
 
     update

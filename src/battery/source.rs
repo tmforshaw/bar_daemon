@@ -4,7 +4,7 @@ use tracing::{instrument, warn};
 
 use super::value::{Battery, BatteryState};
 use crate::{
-    battery, command,
+    command,
     error::DaemonError,
     observed::Observed::{self},
     snapshot::update_snapshot,
@@ -47,10 +47,7 @@ impl BatterySource for AcpiBattery {
         let battery: Observed<_> = read_inner().into();
 
         // Update current snapshot
-        let update = update_snapshot(battery.clone()).await;
-
-        // Perform notification checks and create notification if needed
-        battery::notify(update).await?;
+        let _update = update_snapshot(battery.clone()).await;
 
         Ok(battery)
     }

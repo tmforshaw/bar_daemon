@@ -12,6 +12,7 @@ use crate::{
     error::DaemonError,
     impl_into_snapshot_event, impl_monitored, impl_polled,
     monitored::{Monitored, MonitoredUpdate},
+    notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
     polled::Polled,
     snapshot::{IntoSnapshotEvent, Snapshot, SnapshotEvent},
@@ -135,51 +136,50 @@ impl ToTuples for Battery {
     }
 }
 
-/// # Errors
-/// Returns an error if `CURRENT_SNAPSHOT` could not be read
-/// Returns an error if notification command could not be run
-#[instrument]
-pub async fn notify(update: MonitoredUpdate<Battery>) -> Result<(), DaemonError> {
-    fn do_notification(battery: &Battery) -> Result<(), DaemonError> {
-        command::run(
-            "dunstify",
-            &[
-                "-u",
-                "-normal",
-                "-t",
-                get_config().notification_timeout.to_string().as_str(),
-                "-i",
-                battery.get_icon().as_str(),
-                "-r",
-                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
-                "-h",
-                format!("int:value:{}", battery.percent).as_str(),
-                "Battery: ",
-            ],
-        )?;
+impl Notify<Self> for Battery {
+    /// # Errors
+    /// Returns an error if `CURRENT_SNAPSHOT` could not be read
+    /// Returns an error if notification command could not be run
+    #[instrument]
+    async fn notify(update: MonitoredUpdate<Self>) -> Result<(), DaemonError> {
+        fn do_notification(battery: &Battery) -> Result<(), DaemonError> {
+            command::run(
+                "dunstify",
+                &[
+                    "-u",
+                    "-normal",
+                    "-t",
+                    get_config().notification_timeout.to_string().as_str(),
+                    "-i",
+                    battery.get_icon().as_str(),
+                    "-r",
+                    (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
+                    "-h",
+                    format!("int:value:{}", battery.percent).as_str(),
+                    "Battery: ",
+                ],
+            )?;
 
-        Ok(())
-    }
+            Ok(())
+        }
 
-    fn do_notification_unavailable() -> Result<(), DaemonError> {
-        command::run(
-            "dunstify",
-            &[
-                "-u",
-                "-normal",
-                "-t",
-                get_config().notification_timeout.to_string().as_str(),
-                "-r",
-                (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
-                format!("Battery Unavailable: {}", Unavailable::<Battery>).as_str(),
-            ],
-        )?;
+        fn do_notification_unavailable() -> Result<(), DaemonError> {
+            command::run(
+                "dunstify",
+                &[
+                    "-u",
+                    "-normal",
+                    "-t",
+                    get_config().notification_timeout.to_string().as_str(),
+                    "-r",
+                    (NOTIFICATION_ID + NOTIFICATION_OFFSET).to_string().as_str(),
+                    format!("Battery Unavailable: {}", Unavailable::<Battery>).as_str(),
+                ],
+            )?;
 
-        Ok(())
-    }
+            Ok(())
+        }
 
-    // Only perform checks if the update changed something
-    if update.old != update.new {
         // If the new values are valid
         match update.new {
             Valid(new) => {
@@ -229,9 +229,9 @@ pub async fn notify(update: MonitoredUpdate<Battery>) -> Result<(), DaemonError>
             }
             Unavailable | Recovering => do_notification_unavailable()?,
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 /// # Errors
