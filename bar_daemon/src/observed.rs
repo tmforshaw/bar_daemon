@@ -6,7 +6,7 @@ use tracing::{info, instrument, warn};
 
 use crate::{
     error::DaemonError,
-    monitored::{Monitored, MonitoredUpdate},
+    monitored::Monitored,
     notification::Notify,
     snapshot::{IntoSnapshotEvent, current_snapshot, update_snapshot},
     tuples::ToTuples,
