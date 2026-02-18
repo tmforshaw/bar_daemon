@@ -20,7 +20,7 @@ const READ_ATTEMPT_INTERVAL: Duration = Duration::from_micros(500);
 #[instrument(skip(timer))]
 async fn read_until_valid<M: Monitored + IntoSnapshotEvent + Notify<M>>(
     timer: &mut Interval,
-) -> Result<(MonitoredUpdate<M>, u32), DaemonError> {
+) -> Result<(Observed<M>, u32), DaemonError> {
     let snapshot = current_snapshot().await;
     let mut current: Observed<M> = M::get(&snapshot);
 
@@ -42,9 +42,7 @@ async fn read_until_valid<M: Monitored + IntoSnapshotEvent + Notify<M>>(
     }
 
     if current.is_valid() {
-        // TODO Could just return the new value and not worry about this potentially unecessary step
-        // Call update_snapshot() even though it might be redundant (Implicitly called in M::latest())
-        Ok((update_snapshot(current).await, attempts_num))
+        Ok((current, attempts_num))
     } else {
         Err(DaemonError::MonitoredReadAttemptFail(
             type_name::<M>().to_string(),
@@ -65,7 +63,7 @@ pub fn spawn_read_until_valid<M: Monitored + IntoSnapshotEvent + Notify<M>>() {
         let mut timer = tokio::time::interval(READ_ATTEMPT_INTERVAL);
 
         match read_until_valid::<M>(&mut timer).await {
-            Ok((update, attempts)) => info!("Read Until Available Returned: '{:?}' after {attempts} attempts", update.new),
+            Ok((new, attempts)) => info!("Read Until Available Returned: '{new:?}' after {attempts} attempts"),
             Err(e) => warn!("{e}"),
         }
     });
