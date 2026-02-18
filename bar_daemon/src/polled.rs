@@ -22,19 +22,6 @@ pub trait Polled: Monitored {
     }
 }
 
-// /// # Documentation
-// /// Generate the `Impl` for `Polled` using the given `type_name`
-// #[macro_export]
-// macro_rules! impl_polled {
-//     ($type_name:ident) => {
-//         impl Polled for $type_name {
-//             async fn poll() -> Result<Observed<Self>, DaemonError> {
-//                 Self::latest().await
-//             }
-//         }
-//     };
-// }
-
 pub fn spawn_poller<P: Polled + IntoSnapshotEvent + Notify<P>>(shutdown_notify: Arc<tokio::sync::Notify>) {
     tokio::spawn(async move {
         let mut timer = tokio::time::interval(P::interval());
