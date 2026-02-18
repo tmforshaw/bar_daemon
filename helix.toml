@@ -1,8 +1,0 @@
-[[debug]]
-name = "Debug Rust Target"
-type = "lldb"
-request = "launch"
-program = "target/debug/bar_daemon"
-args = ["daemon"]
-cwd = "."
-stopOnEntry = false
