@@ -1,16 +1,11 @@
 use tracing::{debug, instrument};
 
 use crate::{
+    changed::{Changed, ChangedConstructor},
     error::DaemonError,
-    observed::Observed::{self, Recovering, Unavailable},
+    observed::Observed::{self, Recovering, Unavailable, Valid},
     snapshot::{IntoSnapshotEvent, Snapshot, broadcast_snapshot_event},
 };
-
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
-pub struct MonitoredUpdate<M: Monitored> {
-    pub old: Observed<M>,
-    pub new: Observed<M>,
-}
 
 pub trait Monitored: std::fmt::Debug + Sized + Clone + Send + PartialEq + Eq + 'static {
     fn get(snapshot: &Snapshot) -> Observed<Self>;
@@ -76,4 +71,30 @@ macro_rules! impl_monitored {
             }
         }
     };
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub struct MonitoredUpdate<M: Monitored> {
+    pub old: Observed<M>,
+    pub new: Observed<M>,
+}
+
+impl<M> MonitoredUpdate<M>
+where
+    M: Changed + Monitored,
+    M::ChangedType: ChangedConstructor,
+{
+    pub fn changed(&self) -> M::ChangedType {
+        if let Self {
+            old: Valid(old),
+            new: Valid(new),
+        } = self
+        {
+            old.changed(new)
+        } else if self.old == self.new {
+            M::ChangedType::all_false()
+        } else {
+            M::ChangedType::all_true()
+        }
+    }
 }

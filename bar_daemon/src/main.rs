@@ -21,6 +21,7 @@ use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 pub mod battery;
 pub mod bluetooth;
 pub mod brightness;
+pub mod changed;
 pub mod cli;
 pub mod command;
 pub mod config;

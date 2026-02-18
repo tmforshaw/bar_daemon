@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, instrument};
 
 use crate::{
-    ICON_END, ICON_EXT, NOTIFICATION_ID, command,
+    ICON_END, ICON_EXT, NOTIFICATION_ID,
+    brightness::KEYBOARD_ID,
+    changed::{Changed, ChangedConstructor},
+    command,
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
@@ -51,7 +54,7 @@ pub enum BrightnessItem {
     All,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq, bar_daemon_derive::Changed)]
 pub struct Brightness {
     pub monitor: u32,
     pub keyboard: u32,
@@ -161,13 +164,19 @@ impl Notify<Self> for Brightness {
             Ok(())
         }
 
-        // TODO Figure out which value changed and notify for that device_id
-        let device_id = MONITOR_ID;
+        // Get which device(s) changed
+        let changed = update.changed();
+        let device_ids = [changed.monitor.then_some(MONITOR_ID), changed.keyboard.then_some(KEYBOARD_ID)]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
 
         // If the new values are valid
-        match update.new {
-            Valid(new) => do_notification(&new, device_id)?,
-            Unavailable | Recovering => do_notification_unavailable(device_id)?,
+        for device_id in device_ids {
+            match update.new {
+                Valid(ref new) => do_notification(new, device_id)?,
+                Unavailable | Recovering => do_notification_unavailable(device_id)?,
+            }
         }
 
         Ok(())
