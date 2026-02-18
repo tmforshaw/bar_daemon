@@ -9,7 +9,7 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_into_snapshot_event, impl_monitored,
+    impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
     notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
@@ -45,13 +45,12 @@ pub enum BluetoothItem {
     All,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq, bar_daemon_derive::IntoSnapshotEvent)]
 pub struct Bluetooth {
     pub state: bool,
 }
 
 impl_monitored!(Bluetooth, bluetooth, bluetooth);
-impl_into_snapshot_event!(Bluetooth);
 
 impl Bluetooth {
     #[must_use]

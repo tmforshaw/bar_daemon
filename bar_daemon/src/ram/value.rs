@@ -6,7 +6,7 @@ use crate::{
     ICON_END, ICON_EXT,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_into_snapshot_event, impl_monitored, impl_polled,
+    impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
     notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
@@ -38,7 +38,9 @@ pub enum RamItem {
     All,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(
+    Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq, bar_daemon_derive::Polled, bar_daemon_derive::IntoSnapshotEvent,
+)]
 pub struct Ram {
     pub total: u64,
     pub used: u64,
@@ -46,8 +48,6 @@ pub struct Ram {
 }
 
 impl_monitored!(Ram, ram, ram);
-impl_into_snapshot_event!(Ram);
-impl_polled!(Ram);
 
 impl Ram {
     #[must_use]

@@ -10,7 +10,7 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_into_snapshot_event, impl_monitored,
+    impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
     notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
@@ -54,14 +54,15 @@ pub enum BrightnessItem {
     All,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq, bar_daemon_derive::Changed)]
+#[derive(
+    Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq, bar_daemon_derive::Changed, bar_daemon_derive::IntoSnapshotEvent,
+)]
 pub struct Brightness {
     pub monitor: u32,
     pub keyboard: u32,
 }
 
 impl_monitored!(Brightness, brightness, brightness);
-impl_into_snapshot_event!(Brightness);
 
 impl Brightness {
     #[must_use]

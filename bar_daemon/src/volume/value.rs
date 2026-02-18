@@ -9,7 +9,7 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_into_snapshot_event, impl_monitored,
+    impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
     notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
@@ -53,14 +53,13 @@ pub enum VolumeItem {
     All,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq, bar_daemon_derive::IntoSnapshotEvent)]
 pub struct Volume {
     pub percent: u32,
     pub mute: bool,
 }
 
 impl_monitored!(Volume, volume, volume);
-impl_into_snapshot_event!(Volume);
 
 impl Volume {
     #[must_use]

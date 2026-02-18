@@ -10,7 +10,7 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_into_snapshot_event, impl_monitored, impl_polled,
+    impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
     notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
@@ -72,7 +72,9 @@ struct BatteryNotifyState {
 
 static BAT_NOTIFY_STATE: LazyLock<RwLock<BatteryNotifyState>> = LazyLock::new(|| RwLock::new(BatteryNotifyState::default()));
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(
+    Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq, bar_daemon_derive::Polled, bar_daemon_derive::IntoSnapshotEvent,
+)]
 pub struct Battery {
     pub state: BatteryState,
     pub percent: u32,
@@ -80,8 +82,6 @@ pub struct Battery {
 }
 
 impl_monitored!(Battery, battery, battery);
-impl_into_snapshot_event!(Battery);
-impl_polled!(Battery);
 
 impl Battery {
     #[must_use]

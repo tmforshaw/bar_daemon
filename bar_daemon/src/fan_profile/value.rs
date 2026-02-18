@@ -7,7 +7,7 @@ use crate::{
     config::get_config,
     daemon::{DaemonItem, DaemonMessage, DaemonReply},
     error::DaemonError,
-    impl_into_snapshot_event, impl_monitored, impl_polled,
+    impl_monitored,
     monitored::{Monitored, MonitoredUpdate},
     notification::Notify,
     observed::Observed::{self, Recovering, Unavailable, Valid},
@@ -61,14 +61,14 @@ pub enum FanProfileItem {
     Icon,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(
+    Clone, Debug, Default, PartialEq, PartialOrd, Ord, Eq, bar_daemon_derive::Polled, bar_daemon_derive::IntoSnapshotEvent,
+)]
 pub struct FanProfile {
     pub profile: FanState,
 }
 
 impl_monitored!(FanProfile, fan_profile, fan_profile);
-impl_into_snapshot_event!(FanProfile);
-impl_polled!(FanProfile);
 
 impl FanProfile {
     #[must_use]

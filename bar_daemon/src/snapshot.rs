@@ -109,23 +109,3 @@ pub enum SnapshotEvent {
 pub trait IntoSnapshotEvent: Monitored {
     fn into_event(update: MonitoredUpdate<Self>) -> SnapshotEvent;
 }
-
-/// # Documentation
-/// Generate the `Impl` for `IntoSnapshotEvent` using the given `type_name`
-/// Generate the `Impl` `From<MonitoredUpdate<$type_name>> for SnapshotEvent` using the given `type_name`
-#[macro_export]
-macro_rules! impl_into_snapshot_event {
-    ($type_name:ident) => {
-        impl IntoSnapshotEvent for $type_name {
-            fn into_event(update: MonitoredUpdate<Self>) -> SnapshotEvent {
-                SnapshotEvent::$type_name(update)
-            }
-        }
-
-        impl From<MonitoredUpdate<$type_name>> for SnapshotEvent {
-            fn from(update: MonitoredUpdate<$type_name>) -> Self {
-                IntoSnapshotEvent::into_event(update)
-            }
-        }
-    };
-}
