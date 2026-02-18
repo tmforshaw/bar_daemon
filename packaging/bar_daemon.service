@@ -7,7 +7,7 @@ Wants=graphical-session.target
 Type=simple
 ExecStart=/usr/bin/bar_daemon daemon
 Restart=on-failure
-Environment=HOME=%h
+Environment="HOME=%h" "RUST_LOG=info"
 WorkingDirectory=%h
 StandardOutput=journal
 StandardError=journal
