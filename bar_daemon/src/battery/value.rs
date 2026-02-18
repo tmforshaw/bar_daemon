@@ -187,6 +187,12 @@ impl Notify<Self> for Battery {
                 if update.old.is_unavailable_or(|old| old.state != new.state) {
                     // Mark all notifications as non-completed
                     *(BAT_NOTIFY_STATE.write().await) = BatteryNotifyState::default();
+
+                    // Perform the notification
+                    do_notification(&new)?;
+
+                    // Because of this notification, no further checks need to be done
+                    return Ok(());
                 }
 
                 // Check to see if any of the desired threhsolds have been reached for the first time
