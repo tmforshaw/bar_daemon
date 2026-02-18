@@ -171,8 +171,9 @@ impl Notify<Self> for Brightness {
             .flatten()
             .collect::<Vec<_>>();
 
-        // If the new values are valid
+        // Perform a notification for all devices which changed
         for device_id in device_ids {
+            // If the new values are valid
             match update.new {
                 Valid(ref new) => do_notification(new, device_id)?,
                 Unavailable | Recovering => do_notification_unavailable(device_id)?,

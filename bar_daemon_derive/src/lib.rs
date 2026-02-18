@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, parse_macro_input};
+use syn::{Data, DeriveInput, Fields, LitStr, parse_macro_input};
 
 #[proc_macro_derive(Changed)]
 pub fn changed_derive(input: TokenStream) -> TokenStream {
@@ -23,17 +23,19 @@ pub fn changed_derive(input: TokenStream) -> TokenStream {
         _ => panic!("Changed can only be derived for structs"),
     };
 
-    // Build the Changed struct fields
+    // Build the {Name}Changed struct fields
     let changed_fields = fields.iter().map(|f| {
         let fname = &f.ident;
         quote! { #fname: bool }
     });
 
-    // Build the changed() method body
+    // Mark which fields have changed
     let comparisons = fields.iter().map(|f| {
         let fname = &f.ident;
         quote! { #fname: self.#fname != other.#fname }
     });
+
+    // Generate all_true() and all_false() fields -------------------
 
     // Generate all_true() initializer with all fields true
     let all_true_fields = fields.iter().map(|f| {
@@ -47,9 +49,36 @@ pub fn changed_derive(input: TokenStream) -> TokenStream {
         quote! { #fname: false }
     });
 
+    // Generate Documentation -------------------
+
+    // Generate docs for changed()
+    let changed_struct_docs = {
+        let text = format!("# Documentation\nStruct of `{changed_name}` to allow implementing `Changed` for `{name}`");
+        LitStr::new(&text, proc_macro2::Span::call_site())
+    };
+
+    // Generate docs for changed()
+    let changed_fn_docs = {
+        let text = format!("# Documentation\nGet the `bool` for each field of `{name}` which changed between `self` and `other`");
+        LitStr::new(&text, proc_macro2::Span::call_site())
+    };
+
+    // Generate docs for ChangedConstructor all_true()
+    let all_true_fn_docs = {
+        let text = format!("# Documentation\nCreates a new `{changed_name}` with all fields initialised to `true`");
+        LitStr::new(&text, proc_macro2::Span::call_site())
+    };
+
+    // Generate docs for ChangedConstructor all_true()
+    let all_false_fn_docs = {
+        let text = format!("# Documentation\nCreates a new `{changed_name}` with all fields initialised to `false`");
+        LitStr::new(&text, proc_macro2::Span::call_site())
+    };
+
+    // Generate the Struct, and Impls for the Changed trait and ChangedConstructor trait
     let expanded = quote! {
-        /// # Documentation
-        /// Generate Changed struct
+        // Create {Name}Changed struct
+        #[doc = #changed_struct_docs]
         pub struct #changed_name #generics {
            #( #changed_fields ),*
         }
@@ -58,8 +87,7 @@ pub fn changed_derive(input: TokenStream) -> TokenStream {
         impl #generics Changed for #name #generics {
             type ChangedType = #changed_name #generics;
 
-            /// # Documentation
-            /// Creates a `changed()` function which returns which fields changed between `self` and `other`
+            #[doc = #changed_fn_docs]
             fn changed(&self, other: &Self) -> Self::ChangedType
             where #( #type_params: std::cmp::PartialEq ),*
             {
@@ -71,16 +99,14 @@ pub fn changed_derive(input: TokenStream) -> TokenStream {
 
          // Implement ChangedConstructor for the ChangedType struct
          impl #generics ChangedConstructor for #changed_name #generics {
-            /// # Documentation
-            /// Creates a new `ChangedType` with all fields initialised to `true`
+            #[doc = #all_true_fn_docs]
             fn all_true() -> Self {
                 Self {
                     #( #all_true_fields ),*
                 }
             }
 
-            /// # Documentation
-            /// Creates a new `ChangedType` with all fields initialised to `false`
+            #[doc = #all_false_fn_docs]
             fn all_false() -> Self {
                 Self {
                     #( #all_false_fields ),*
