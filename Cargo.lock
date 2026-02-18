@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "bar_daemon"
-version = "0.5.10"
+version = "0.5.11"
 dependencies = [
  "clap",
  "futures",

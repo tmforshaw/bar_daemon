@@ -42,6 +42,8 @@ async fn read_until_valid<M: Monitored + IntoSnapshotEvent + Notify<M>>(
     }
 
     if current.is_valid() {
+        // TODO Could just return the new value and not worry about this potentially unecessary step
+        // Call update_snapshot() even though it might be redundant (Implicitly called in M::latest())
         Ok((update_snapshot(current).await, attempts_num))
     } else {
         Err(DaemonError::MonitoredReadAttemptFail(

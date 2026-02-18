@@ -84,47 +84,46 @@ pub async fn handle_clients(
     loop {
         tokio::select! {
             Ok(event)= snapshot_rx.recv() => {
-                // If there are clients
-                if !clients.lock().await.is_empty() {
-                    debug!("SnapshotEvent Received: {event:?}");
+                debug!("SnapshotEvent Received: {event:?}");
 
-                    let (index, new_tuples) = match event {
-                        SnapshotEvent::Battery(update) => (TupleName::Battery as usize, update.new.to_tuples()),
-                        SnapshotEvent::Bluetooth(update) => (TupleName::Bluetooth as usize, update.new.to_tuples()),
-                        SnapshotEvent::Brightness(update) => (TupleName::Brightness as usize, update.new.to_tuples()),
-                        SnapshotEvent::FanProfile(update) => (TupleName::FanProfile as usize, update.new.to_tuples()),
-                        SnapshotEvent::Ram(update) => (TupleName::Ram as usize, update.new.to_tuples()),
-                        SnapshotEvent::Volume(update) => (TupleName::Volume as usize, update.new.to_tuples()),
-                    };
+                let (index, new_tuples) = match event {
+                    SnapshotEvent::Battery(update) => (TupleName::Battery as usize, update.new.to_tuples()),
+                    SnapshotEvent::Bluetooth(update) => (TupleName::Bluetooth as usize, update.new.to_tuples()),
+                    SnapshotEvent::Brightness(update) => (TupleName::Brightness as usize, update.new.to_tuples()),
+                    SnapshotEvent::FanProfile(update) => (TupleName::FanProfile as usize, update.new.to_tuples()),
+                    SnapshotEvent::Ram(update) => (TupleName::Ram as usize, update.new.to_tuples()),
+                    SnapshotEvent::Volume(update) => (TupleName::Volume as usize, update.new.to_tuples()),
+                };
 
-                    // Convert the updated tuples to JSON
-                    let json = tuples_to_json({
-                       // Update the inner of the tuples Mutex
-                       let mut tuples_guard = tuples.lock().await;
-                       (*tuples_guard)[index] = (
-                            TUPLE_NAMES[index].to_string(),
-                            new_tuples,
-                        );
+                // Convert the updated tuples to JSON
+                let json = tuples_to_json({
+                   // Update the inner of the tuples Mutex
+                   let mut tuples_guard = tuples.lock().await;
+                   (*tuples_guard)[index] = (
+                        TUPLE_NAMES[index].to_string(),
+                        new_tuples,
+                    );
 
-                       tuples_guard.clone()
-                    })? + "\n";
+                   tuples_guard.clone()
+                })? + "\n";
 
-                    // Broadcast to each client
-                    let mut to_remove = vec![];
-                    for (id, client) in clients.lock().await.iter_mut() {
-                        if client.stream.try_write(json.as_bytes()).is_err() {
-                            info!("Client {id} disconnected");
-                            to_remove.push(*id);
-                        }
-                    }
-
-                    // Remove dead clients
-                    for id in to_remove {
-                        clients.lock().await.remove(&id);
-                        info!("Client {id} removed");
+                // Broadcast to each client
+                let mut to_remove = vec![];
+                for (id, client) in clients.lock().await.iter_mut() {
+                    if client.stream.try_write(json.as_bytes()).is_err() {
+                        info!("Client {id} disconnected");
+                        to_remove.push(*id);
                     }
                 }
+
+                // Remove dead clients
+                for id in to_remove {
+                    clients.lock().await.remove(&id);
+                    info!("Client {id} removed");
+                }
+
             }
+
             () = shutdown_notify.notified() => {
                 info!("Client handler received shutdown notification");
                 break;
