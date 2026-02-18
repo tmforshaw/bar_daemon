@@ -14,8 +14,6 @@ use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 
 // TODO Implement some kind of "last-known value" system for the 'set' functions (currently uses unwrap_or_default)
 // TODO Call read_until_valid() again after a long wait if the maximum number of attempts have been reached.
-// TODO Socket handler shutdown successfully shows up twice in the INFO
-// TODO Change cached Volume percent by the agreed amount, and display that value so that the log conversions don't mess it up
 
 pub mod battery;
 pub mod bluetooth;
