@@ -69,7 +69,7 @@ Use `bar_daemon help` or `bar_daemon <COMMAND> help` to get more info about usag
 <br/>
 
 ## Config
-By default the config file is located at `.config/bar_daemon/config.toml`, when the program is first run if this file doesn't exist the default config will be copied from /etc/bar_daemon/config.toml
+By default the config file is located at `.config/bar_daemon/config.toml`, when the program is first run, if this file doesn't exist, the default config will be copied from `/etc/bar_daemon/config.toml`
 
 Example Config
 ``` toml
