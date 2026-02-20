@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[derive(Parser)]
-#[command(name = "bar_daemon", about = "A daemon which can be ran, and seperate instances can listen for changes, or get/set values", long_about = None)]
+#[command(name = "bar_daemon", about = "A daemon which can be ran, and separate instances can listen for changes, or get/set values", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub commands: CliCommands,
