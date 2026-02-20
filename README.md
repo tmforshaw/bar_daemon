@@ -21,49 +21,50 @@ It can be installed via `paru -S bar_daemon`, or any other AUR package installat
 <br/>
 
 ## Usage
-Listen for changes/polled values
+### Listen for changes/polled values
 ```
 bar_daemon listen
 ```
 
-Start daemon
+### Start daemon
 ```
 bar_daemon daemon
 ```
 
-Get Volume Percent
+### Get Volume Percent
 ```
 bar_daemon get volume percent
 bar_daemon get v p
 bar_daemon get vol per
 ```
 
-Get Battery Time
+### Get Battery Time
 ```
 bar_daemon get battery time
 bar_daemon get bat time
 bar_daemon get bat t
 ```
 
-Get Battery Icon
+### Get Battery Icon
 ```
 bar_daemon get battery icon
 bar_daemon get bat i
 ```
 
-Set Fan Speed
+### Set Fan Speed
 ```
 bar_daemon set fan profile Balanced
 bar_daemon set fanprofile profile next
 bar_daemon set fan p prev
 ```
 
-Get All (Responds with an Enum of all the tuples in JSON format)
+### Get All (Responds with an Enum of all the tuples in JSON format)
 ```
 bar_daemon get
 bar_daemon get all
 ```
 
+### More Information
 Use `bar_daemon help` or `bar_daemon <COMMAND> help` to get more info about usage
 
 <br/>
@@ -71,7 +72,7 @@ Use `bar_daemon help` or `bar_daemon <COMMAND> help` to get more info about usag
 ## Config
 By default the config file is located at `.config/bar_daemon/config.toml`, when the program is first run, if this file doesn't exist, the default config will be copied from `/etc/bar_daemon/config.toml`
 
-Example Config
+### Example Config
 ``` toml
 # Timeout for notification (in milliseconds)
 notification_timeout = 1000
