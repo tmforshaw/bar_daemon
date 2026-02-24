@@ -24,6 +24,7 @@ pub mod cli;
 pub mod command;
 pub mod config;
 pub mod daemon;
+pub mod dbus_listener;
 pub mod error;
 pub mod fan_profile;
 pub mod json;

@@ -7,7 +7,7 @@ use crate::{
     monitored::Monitored,
     notification::Notify,
     snapshot::{IntoSnapshotEvent, update_snapshot},
-    trigger::{IntervalTrigger, Trigger},
+    trigger::{EventTrigger, HybridTrigger, IntervalTrigger, Trigger},
 };
 
 pub trait Polled: Monitored {
@@ -26,9 +26,12 @@ pub fn spawn_poller<P: Polled + IntoSnapshotEvent + Notify<P>>(shutdown_notify: 
     spawn_poll_on_trigger::<P, _>(trigger, shutdown_notify);
 }
 
-pub fn spawn_poll_or_listen<P: Polled + IntoSnapshotEvent + Notify<P>>(shutdown_notify: Arc<tokio::sync::Notify>) {
-    // Create an IntervalTrigger for this poller
-    let trigger = IntervalTrigger::new(P::interval());
+pub fn spawn_poll_or_listen<P: Polled + IntoSnapshotEvent + Notify<P>>(
+    rx: tokio::sync::mpsc::Receiver<()>,
+    shutdown_notify: Arc<tokio::sync::Notify>,
+) {
+    // Create a HybridTrigger for this event-driven poller
+    let trigger = HybridTrigger::new(EventTrigger::new(rx), P::interval());
 
     // Spawn the polling loop, triggered by a timer
     spawn_poll_on_trigger::<P, _>(trigger, shutdown_notify);

@@ -57,6 +57,15 @@ pub struct HybridTrigger<T: Trigger> {
     fallback: tokio::time::Interval,
 }
 
+impl<T: Trigger> HybridTrigger<T> {
+    pub fn new(event: T, period: Duration) -> Self {
+        Self {
+            event,
+            fallback: tokio::time::interval(period),
+        }
+    }
+}
+
 #[async_trait::async_trait]
 impl<T: Trigger + Send> Trigger for HybridTrigger<T> {
     async fn wait(&mut self) {

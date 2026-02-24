@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
-    sync::{Mutex, Notify},
+    sync::{Mutex, Notify, mpsc},
 };
 use tracing::{error, info, instrument, trace};
 use uuid::Uuid;
@@ -13,10 +13,11 @@ use crate::{
     battery::{self, Battery, BatteryItem},
     bluetooth::{self, BluetoothItem},
     brightness::{self, BrightnessItem},
+    dbus_listener::spawn_upower_listener,
     error::DaemonError,
     fan_profile::{self, FanProfile, FanProfileItem},
     listener::{Client, SharedClients, handle_clients},
-    polled::spawn_poller,
+    polled::{spawn_poll_or_listen, spawn_poller},
     ram::{self, Ram, RamItem},
     shutdown::shutdown_signal,
     snapshot::subscribe_snapshot,
@@ -87,7 +88,7 @@ async fn do_daemon_inner() -> Result<(), DaemonError> {
     tokio::pin!(shutdown);
 
     // Create Notify for broadcasting shutdown to all tasks
-    let shutdowwn_notify = Arc::new(Notify::new());
+    let shutdown_notify = Arc::new(Notify::new());
 
     // Create new UnixListener at SOCKET_PATH
     let listener = UnixListener::bind(SOCKET_PATH)?;
@@ -100,13 +101,19 @@ async fn do_daemon_inner() -> Result<(), DaemonError> {
 
     // Spawn a task which handles listener clients
     let clients_clone = clients.clone();
-    let shutdown_notify_clone = shutdowwn_notify.clone();
+    let shutdown_notify_clone = shutdown_notify.clone();
     tokio::spawn(async move { handle_clients(clients_clone, &mut snapshot_rx, shutdown_notify_clone).await });
 
+    let (tx, rx) = mpsc::channel::<()>(16);
+    // Listen for changes on the DBus
+    spawn_upower_listener(tx);
+
+    // Spawn a poll or listen task for Battery
+    spawn_poll_or_listen::<Battery>(rx, shutdown_notify.clone());
+
     // Spawn poller for each polled value
-    spawn_poller::<Battery>(shutdowwn_notify.clone());
-    spawn_poller::<FanProfile>(shutdowwn_notify.clone());
-    spawn_poller::<Ram>(shutdowwn_notify.clone());
+    spawn_poller::<FanProfile>(shutdown_notify.clone());
+    spawn_poller::<Ram>(shutdown_notify.clone());
 
     // Handle sockets
     loop {
@@ -114,7 +121,7 @@ async fn do_daemon_inner() -> Result<(), DaemonError> {
             () = &mut shutdown => {
                 info!("Shutdown signal received, stopping connection accept loop");
 
-                shutdowwn_notify.notify_waiters();
+                shutdown_notify.notify_waiters();
 
                 break;
             },
@@ -123,7 +130,7 @@ async fn do_daemon_inner() -> Result<(), DaemonError> {
 
                 // Spawn a task which handles this socket
                 let clients_clone = clients.clone();
-                let shutdown_notify_clone = shutdowwn_notify.clone();
+                let shutdown_notify_clone = shutdown_notify.clone();
                 tokio::spawn(async move { handle_socket(stream, clients_clone, shutdown_notify_clone).await });
             }
         }
