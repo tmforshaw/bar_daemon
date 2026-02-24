@@ -4,20 +4,24 @@ use tracing::warn;
 use zbus::MatchRule;
 use zbus::{Connection, MessageStream};
 
-/// Spawn a background task that sends () whenever `UPower` says something changed.
 pub fn spawn_upower_listener(tx: Sender<()>) {
     tokio::spawn(async move {
-        if let Err(e) = run_dbus_listener(tx, "/org/freedesktop/UPower/devices").await {
+        // Store the Connection inside the task so it lives for the task's lifetime
+        let conn = match Connection::system().await {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!("Failed to connect to system bus: {e}");
+                return;
+            }
+        };
+
+        if let Err(e) = run_dbus_listener(tx, conn, "/org/freedesktop/UPower/devices/battery_BAT0").await {
             tracing::error!("UPower listener failed: {e}");
         }
     });
 }
 
-async fn run_dbus_listener<S: AsRef<str>>(tx: Sender<()>, listen_folder: S) -> zbus::Result<()> {
-    // Listen on the dbus
-    let conn = Connection::system().await?;
-
-    // Match *any* property change on battery devices
+async fn run_dbus_listener<S: AsRef<str>>(tx: Sender<()>, conn: Connection, listen_folder: S) -> zbus::Result<()> {
     let rule = MatchRule::builder()
         .msg_type(zbus::message::Type::Signal)
         .interface("org.freedesktop.DBus.Properties")?
@@ -30,7 +34,6 @@ async fn run_dbus_listener<S: AsRef<str>>(tx: Sender<()>, listen_folder: S) -> z
     while let Some(msg) = stream.next().await {
         match msg {
             Ok(_) => {
-                // Send an event that something has changed
                 if tx.send(()).await.is_err() {
                     break; // No more receivers, exit
                 }

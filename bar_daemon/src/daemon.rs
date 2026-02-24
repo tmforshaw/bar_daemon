@@ -107,17 +107,17 @@ async fn do_daemon_inner() -> Result<(), DaemonError> {
     // Spawn a poll or listen task for Battery
     let (tx, rx) = mpsc::channel::<()>(16);
     spawn_upower_listener(tx); // Listen for changes on the DBus
-    spawn_poll_or_listen::<Battery>(rx, shutdown_notify.clone()); // Spawn poll or listen
+    spawn_poll_or_listen::<Battery>(rx, 1000, shutdown_notify.clone()); // Spawn poll or listen
 
     // Spawn a poll or listen task for FanProfile
     let (tx, rx) = mpsc::channel::<()>(16);
     spawn_hwmon_listener(tx); // Listen for changes in hwmon
-    spawn_poll_or_listen::<FanProfile>(rx, shutdown_notify.clone()); // Spawn poll or listen
+    spawn_poll_or_listen::<FanProfile>(rx, 1000, shutdown_notify.clone()); // Spawn poll or listen
 
     // Spawn a poll or listen task for Ram
     let (tx, rx) = mpsc::channel::<()>(16);
     spawn_ram_listener(tx); // Listen for changes in the proc files
-    spawn_poll_or_listen::<Ram>(rx, shutdown_notify.clone()); // Spawn poll or listen
+    spawn_poll_or_listen::<Ram>(rx, 2000, shutdown_notify.clone()); // Spawn poll or listen
 
     // Handle sockets
     loop {
