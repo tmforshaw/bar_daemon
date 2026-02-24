@@ -24,3 +24,5 @@ bar_daemon_derive = { path = "../bar_daemon_derive"}
 zbus = { version = "5.14.0", features = ["tokio"] }
 zvariant = "5.10.0"
 async-trait = "0.1.89"
+udev = "0.9.3"
+libc = "0.2.182"
