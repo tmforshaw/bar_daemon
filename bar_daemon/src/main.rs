@@ -14,6 +14,7 @@ use crate::{cli::evaluate_cli, error::DaemonError, logging::init_logging};
 
 // TODO Implement some kind of "last-known value" system for the 'set' functions (currently uses unwrap_or_default)
 // TODO Call read_until_valid() again after a long wait if the maximum number of attempts have been reached.
+// TODO Implement dbus events for polled values
 
 pub mod battery;
 pub mod bluetooth;
@@ -36,6 +37,7 @@ pub mod polled;
 pub mod ram;
 pub mod shutdown;
 pub mod snapshot;
+pub mod trigger;
 pub mod tuples;
 pub mod volume;
 
