@@ -4,18 +4,13 @@ use tracing::error;
 
 use crate::{
     config::get_config,
-    error::DaemonError,
     monitored::Monitored,
     notification::Notify,
-    observed::Observed,
     snapshot::{IntoSnapshotEvent, update_snapshot},
     trigger::{IntervalTrigger, Trigger},
 };
 
 pub trait Polled: Monitored {
-    // Get the latest information about this value
-    fn poll() -> impl std::future::Future<Output = Result<Observed<Self>, DaemonError>> + Send;
-
     // TODO Can add seperate polling rates for each polled value
     #[must_use]
     fn interval() -> Duration {

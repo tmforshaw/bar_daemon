@@ -163,20 +163,8 @@ pub fn derive_polled(input: TokenStream) -> TokenStream {
 
     let type_name = input.ident;
 
-    let docs = {
-        let text = format!(
-            "# Documentation\nGets the latest value of `{type_name}`\n\n# Errors\nReturns an `Err` if `{type_name}::latest()` fails"
-        );
-        LitStr::new(&text, proc_macro2::Span::call_site())
-    };
-
     let expanded = quote! {
-        impl Polled for #type_name {
-            #[doc = #docs]
-            async fn poll() -> Result<Observed<Self>, DaemonError> {
-                Self::latest().await
-            }
-        }
+        impl Polled for #type_name {}
     };
 
     TokenStream::from(expanded)
