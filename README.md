@@ -5,11 +5,13 @@ Notifies on the change of values, and can be queried for the icon of a particula
 
 Intended for use with a status bar, reduces the amount of values which need to be polled for.
 
+Polled values are also event-driven, so that polls are only completed if no events have fired in a while.
+
 ---
 <br/>
 
 <div align="center">
-  
+
 [bar_daemon](https://aur.archlinux.org/packages/bar_daemon) is available on the Arch User Repository.
 
 It can be installed via `paru -S bar_daemon`, or any other AUR package installation service.
@@ -114,7 +116,7 @@ flowchart TD
   end
 
   B --> C
-  
+
   B --> E{"Parse CLI args with 'evaluate_cli()'"}
   E -- "[daemon]" --> F["do_daemon()" called]
   E -- "[listen]" --> AF[[... Handle 'listen' argument ...]]
@@ -135,16 +137,16 @@ flowchart TD
 %% ---------- Handle Clients ----------
   subgraph HANDLE_CLIENTS ["handle_clients()"]
     J{SnapshotEvent or Shutdown}
-  
+
     J -- SnapshotEvent --> K{Are there any clients?}
-  
+
     K -- true --> L[Get monitored value in tuple format]
     L --> M[Convert tuple to JSON]
     M --> N[Update tuples Mutex]
     N --> O[Send JSON to all clients]
     O --> P[Remove dead clients]
     P --> J
-  
+
     K -- false --> J
     J -- Shutdown Event --> Q["Close handle_clients()"]
   end
@@ -154,7 +156,7 @@ flowchart TD
 %% ---------- Listener Accept Loop ----------
   subgraph LISTENER_ACCEPT [Listener Accept Loop]
     S{Listener Receiver or Shutdown}
-  
+
     S -- Connection --> T["Spawn handle_socket() for this listener"]
     S -- Shutdown Event --> AD[Remove socket file]
   end
@@ -164,21 +166,21 @@ flowchart TD
 %% ---------- Client Socket Task ----------
   subgraph HANDLE_SOCKET ["handle_socket()"]
     U{Stream Read or Shutdown}
-  
+
     U -- Stream Read --> V{Is stream buffer empty?}
-  
+
     V -- true --> W["Close handle_socket()"]
     V -- false --> X[Convert bytes to DaemonMessage]
-  
+
     X --> Y{Get reply from DaemonMessage type}
     Y -- Get --> Z["Call match_get_commands()"]
     Y -- Set --> AA["Call match_set_commands()"]
     Y -- Listen --> AB[Add client to clients list]
-  
+
     Z --> AC[Send reply to sender]
     AA --> AC
     AC --> U
-  
+
     U -- Shutdown Event --> W
   end
 
