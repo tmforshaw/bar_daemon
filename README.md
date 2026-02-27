@@ -5,7 +5,7 @@ Notifies on the change of values, and can be queried for the icon of a particula
 
 Intended for use with a status bar, reduces the amount of values which need to be polled for.
 
-Polled values are also event-driven, so that polls are only completed if no events have fired in a while.
+Polled values can also be event-driven, but this currently has a high performance cost.
 
 ---
 <br/>
