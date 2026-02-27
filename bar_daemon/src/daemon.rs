@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
-    sync::{Mutex, Notify, mpsc},
+    sync::{Mutex, Notify},
 };
 use tracing::{error, info, instrument, trace};
 use uuid::Uuid;
@@ -13,11 +13,10 @@ use crate::{
     battery::{self, Battery, BatteryItem},
     bluetooth::{self, BluetoothItem},
     brightness::{self, BrightnessItem},
-    dbus_listener::{spawn_hwmon_listener, spawn_ram_listener, spawn_upower_listener},
     error::DaemonError,
     fan_profile::{self, FanProfile, FanProfileItem},
     listener::{Client, SharedClients, handle_clients},
-    polled::spawn_poll_or_listen,
+    polled::spawn_poller,
     ram::{self, Ram, RamItem},
     shutdown::shutdown_signal,
     snapshot::subscribe_snapshot,
@@ -104,20 +103,10 @@ async fn do_daemon_inner() -> Result<(), DaemonError> {
     let shutdown_notify_clone = shutdown_notify.clone();
     tokio::spawn(async move { handle_clients(clients_clone, &mut snapshot_rx, shutdown_notify_clone).await });
 
-    // Spawn a poll or listen task for Battery
-    let (tx, rx) = mpsc::channel::<()>(16);
-    spawn_upower_listener(tx); // Listen for changes on the DBus
-    spawn_poll_or_listen::<Battery>(rx, 1000, shutdown_notify.clone()); // Spawn poll or listen
-
-    // Spawn a poll or listen task for FanProfile
-    let (tx, rx) = mpsc::channel::<()>(16);
-    spawn_hwmon_listener(tx); // Listen for changes in hwmon
-    spawn_poll_or_listen::<FanProfile>(rx, 1000, shutdown_notify.clone()); // Spawn poll or listen
-
-    // Spawn a poll or listen task for Ram
-    let (tx, rx) = mpsc::channel::<()>(16);
-    spawn_ram_listener(tx); // Listen for changes in the proc files
-    spawn_poll_or_listen::<Ram>(rx, 2000, shutdown_notify.clone()); // Spawn poll or listen
+    // Spawn poller tasks
+    spawn_poller::<Battery>(shutdown_notify.clone());
+    spawn_poller::<FanProfile>(shutdown_notify.clone());
+    spawn_poller::<Ram>(shutdown_notify.clone());
 
     // Handle sockets
     loop {
